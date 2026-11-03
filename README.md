@@ -30,8 +30,28 @@ npm run dev
 ```
 
 Open http://localhost:3000. Without `DATABASE_URL` the app uses a built-in local Postgres (PGlite, in
-`.data/`), so nothing else is needed. `data/demo` has 280 samples from 6 rendered pages in three fonts;
-the typed text there is the Kashmiri word model's reading, so about 7% of pairs are genuinely wrong.
+`.data/`), so nothing else is needed (the import step is optional: an empty database loads `data/demo` by itself).
+
+### Starter data (`data/demo`, 2,651 pictures)
+
+| Font | Pictures | From |
+|---|---|---|
+| Gulmarg Nastaleeq | 113 | 5 rendered pages |
+| Afan Koshur Naksh | 312 | 5 rendered pages |
+| Narqalam | 295 | 5 rendered pages |
+| Noto Nastaliq Urdu | 227 | 5 + 2 rendered pages |
+| Noto Naskh Arabic | 140 | 2 rendered pages |
+| Gulzar | 64 | 2 rendered pages |
+| Kaggle word images (font not labelled) | 1,500 | random sample of `nawabhussaen/kashmiri-ocr` |
+
+Rendered pages use real words from Kaggle `faizaniqbal52/koshur-master-50k-manifest` in the fonts of
+`faizaniqbal52/kashmiri-fonts`, segmented by `segmentation/`. Their typed text is the Kashmiri word
+model's reading, so wrong pairs are real model mistakes: about half of the Gulmarg Nastaleeq words,
+8–19% for the Naskh-style fonts. The Kaggle sample shows its own labels. About 15% of the rendered
+words (known answers) are check items.
+
+**Not used yet:** `jazz786/handwritten-kashmiri-text-dataset` (51 handwritten pages) has no typed text,
+so there is nothing to compare against until the pages are transcribed.
 
 ## Put it online (Vercel + Supabase)
 

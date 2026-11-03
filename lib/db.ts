@@ -49,13 +49,22 @@ async function seedIfEmpty(query: Query) {
   const p = file("data/demo/manifest.jsonl");
   if (!fs.existsSync(p)) return;
   const recs = fs.readFileSync(p, "utf8").split("\n").filter(Boolean).map((l) => JSON.parse(l));
-  for (const r of recs) {
+  const rows = recs.map((r) => {
     const gold = typeof r.truth === "string" && r.kind !== "line" && fnv(r.id) < 0.15;
+    return {
+      id: r.id, dataset: r.dataset, kind: r.kind || "word", font: r.font ?? null, image_url: r.image_url,
+      context_url: r.context_url ?? null, proposed_text: r.text, source_ref: r.source_ref || {}, is_gold: gold,
+      gold_verdict: gold ? (r.truth === r.text ? "correct" : "incorrect") : null, gold_text: gold ? r.truth : null,
+    };
+  });
+  // a few large inserts instead of thousands of small ones, so the first start stays within Vercel's time limit
+  for (let i = 0; i < rows.length; i += 1000) {
     await query(
       `insert into samples (id, dataset, kind, font, image_url, context_url, proposed_text, source_ref, is_gold, gold_verdict, gold_text)
-       values ($1, $2, $3, $4, $5, $6, $7, $8::jsonb, $9, $10, $11) on conflict (id) do nothing`,
-      [r.id, r.dataset, r.kind || "word", r.font ?? null, r.image_url, r.context_url ?? null, r.text, JSON.stringify(r.source_ref || {}),
-       gold, gold ? (r.truth === r.text ? "correct" : "incorrect") : null, gold ? r.truth : null]);
+       select id, dataset, kind, font, image_url, context_url, proposed_text, source_ref, is_gold, gold_verdict, gold_text
+       from jsonb_to_recordset(($1::text)::jsonb) as x(id text, dataset text, kind text, font text, image_url text, context_url text,
+         proposed_text text, source_ref jsonb, is_gold boolean, gold_verdict text, gold_text text)
+       on conflict (id) do nothing`, [JSON.stringify(rows.slice(i, i + 1000))]);
   }
 }
 

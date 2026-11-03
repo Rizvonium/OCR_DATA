@@ -79,7 +79,7 @@ for (const r of recs) {
   const goldVerdict = isGold ? (r.truth === r.text ? "correct" : "incorrect") : null;
   await db.query(
     `insert into samples (id, dataset, kind, image_url, context_url, proposed_text, source_ref, is_gold, gold_verdict, gold_text, target_reviews, font)
-     values ($1, $2, $3, $4, $5, $6, $7::jsonb, $8, $9, $10, $11, $12)
+     values ($1, $2, $3, $4, $5, $6, ($7::text)::jsonb, $8, $9, $10, $11, $12)
      on conflict (id) do update set image_url = excluded.image_url, context_url = excluded.context_url,
        proposed_text = excluded.proposed_text, source_ref = excluded.source_ref, is_gold = excluded.is_gold,
        gold_verdict = excluded.gold_verdict, gold_text = excluded.gold_text, target_reviews = excluded.target_reviews,
