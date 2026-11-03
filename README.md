@@ -89,7 +89,7 @@ images) upload them to Supabase Storage instead: also set `SUPABASE_URL` and `SU
 | Check items | ~1 in 8 pictures has a known answer (known-wrong ones favoured, to catch "always Correct"). Trust = share answered right; it scales points and vote weight. Wrong answers show the right one, so people learn. |
 | Several opinions | each picture goes to 3 people; a decision needs agreement (votes weighted by trust). |
 | Automatic flags | median answer under 1.2 s, under 60% on check items, the same button 97% of the time, disagreeing with others over half the time, or 600+ answers an hour. Flagged people count 1/5 and leave the leaderboard; it clears when their answers improve. |
-| Limits | 30 answers a minute; answer speed is measured by the server; 8 new names per network per day. |
+| Limits | 30 answers a minute; answer speed is measured by the server; 30 new names per network per day (raise `SIGNUPS_PER_NETWORK_PER_DAY` for a big workshop on one Wi-Fi). |
 | You decide | `/admin` lists everyone with their numbers; set a person to *blocked* and their answers are ignored everywhere. |
 
 ### Seeing who answered what

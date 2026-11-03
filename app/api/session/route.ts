@@ -5,7 +5,7 @@ import { myStats } from "@/lib/review";
 import { cookies } from "next/headers";
 
 export const dynamic = "force-dynamic";
-const SIGNUPS_PER_NETWORK_PER_DAY = Number(process.env.SIGNUPS_PER_NETWORK_PER_DAY || 8);
+const SIGNUPS_PER_NETWORK_PER_DAY = Number(process.env.SIGNUPS_PER_NETWORK_PER_DAY || 30);
 
 export async function GET() {
   const me = await currentContributor();
