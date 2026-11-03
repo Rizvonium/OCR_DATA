@@ -1,0 +1,198 @@
+-- Kashmiri OCR Data: review app schema. Plain Postgres; safe to run more than once.
+-- Supabase: paste into SQL Editor and run, or `npm run db:setup` with DATABASE_URL set.
+-- Locally (no DATABASE_URL) the app runs the same file in an embedded Postgres (PGlite).
+
+-- People who review. Nobody needs a Supabase Auth account: the app issues every person their own
+-- contributor row, a public code (KS-XXXXXX, shown on the leaderboard and in the dataset credits)
+-- and a secret key (kept in their browser; only its SHA-256 hash is stored here).
+create table if not exists contributors (
+  id            uuid primary key default gen_random_uuid(),
+  code          text not null unique,
+  handle        text not null,
+  handle_key    text not null unique,            -- lower-cased handle, so names are unique
+  token_hash    text not null unique,
+  email         text,
+  ip_hash       text,                             -- salted hash, only to limit sign-ups per network
+  status        text not null default 'active' check (status in ('active', 'flagged', 'blocked')),
+  admin_note    text,
+  created_at    timestamptz not null default now(),
+  last_seen_at  timestamptz
+);
+
+-- One picture to judge: a segmented word (or PAW / line) crop and the typed text proposed for it.
+create table if not exists samples (
+  id            text primary key,                 -- stable unique id from the manifest
+  dataset       text not null,
+  kind          text not null default 'word' check (kind in ('word', 'paw', 'line')),
+  image_url     text not null,
+  context_url   text,                             -- the line it was cut from, box drawn on it
+  proposed_text text not null,
+  source_ref    jsonb not null default '{}'::jsonb,
+  is_gold       boolean not null default false,   -- check item with a known answer
+  gold_verdict  text check (gold_verdict in ('correct', 'incorrect')),
+  gold_text     text,                             -- the right text, for gold items
+  target_reviews int not null default 3,
+  review_count  int not null default 0,           -- kept up to date by a trigger
+  created_at    timestamptz not null default now()
+);
+-- typeface of the printed text (Gulmarg Nastaleeq, Noto Nastaliq, Naskh...). Used only for statistics:
+-- it is never sent to reviewers, who judge every picture the same way whatever the font.
+alter table samples add column if not exists font text;
+create index if not exists samples_queue on samples (is_gold, review_count);
+create index if not exists samples_font on samples (font);
+create index if not exists samples_dataset on samples (dataset);
+
+-- One person's answer about one sample.
+create table if not exists answers (
+  id             bigint generated always as identity primary key,
+  sample_id      text not null references samples(id) on delete cascade,
+  contributor_id uuid not null references contributors(id) on delete cascade,
+  verdict        text not null check (verdict in ('correct', 'incorrect', 'skip')),
+  correction     text,
+  bad_crop       boolean not null default false,
+  ms_spent       int,
+  is_gold        boolean not null default false,
+  gold_pass      boolean,
+  created_at     timestamptz not null default now(),
+  unique (sample_id, contributor_id)
+);
+create index if not exists answers_by_contributor on answers (contributor_id, created_at desc);
+create index if not exists answers_by_sample on answers (sample_id);
+
+create or replace function bump_review_count() returns trigger language plpgsql as $$
+begin
+  if tg_op = 'INSERT' and new.verdict <> 'skip' then
+    update samples set review_count = review_count + 1 where id = new.sample_id;
+  elsif tg_op = 'DELETE' and old.verdict <> 'skip' then
+    update samples set review_count = greatest(0, review_count - 1) where id = old.sample_id;
+  end if;
+  return null;
+end $$;
+drop trigger if exists answers_count on answers;
+create trigger answers_count after insert or delete on answers
+  for each row execute function bump_review_count();
+
+-- Supabase exposes the public schema through its REST API to anyone holding the publishable key.
+-- Row level security with no policies closes that door; the app's server connects as the
+-- database owner and is not affected.
+alter table contributors enable row level security;
+alter table samples enable row level security;
+alter table answers enable row level security;
+
+-- ---------------------------------------------------------------- quality views
+-- Per-person numbers used for trust, the leaderboard and spam flags.
+create or replace view contributor_stats as
+with agreement as (
+  -- leave-one-out: does this answer agree with what the OTHER reviewers said?
+  select a.contributor_id,
+         count(*) as n,
+         count(*) filter (where (a.verdict = 'correct') = (o.n_ok > o.n_bad)) as agree
+  from answers a
+  join lateral (
+    select count(*) filter (where b.verdict = 'correct') as n_ok,
+           count(*) filter (where b.verdict = 'incorrect') as n_bad
+    from answers b
+    where b.sample_id = a.sample_id and b.contributor_id <> a.contributor_id and b.verdict <> 'skip'
+  ) o on o.n_ok + o.n_bad >= 2 and o.n_ok <> o.n_bad
+  where a.verdict <> 'skip' and not a.is_gold
+  group by a.contributor_id
+), confirmed as (
+  -- corrections someone else independently typed the same way
+  select a.contributor_id, count(*) as n
+  from answers a
+  where a.correction is not null and exists (
+    select 1 from answers b
+    where b.sample_id = a.sample_id and b.contributor_id <> a.contributor_id and b.correction = a.correction)
+  group by a.contributor_id
+)
+select c.id, c.code, c.handle, c.status, c.created_at, c.last_seen_at,
+       count(a.id) filter (where a.verdict <> 'skip' and not a.is_gold)            as reviews,
+       count(a.id) filter (where a.verdict = 'skip')                                as skips,
+       count(a.id) filter (where a.correction is not null)                          as corrections,
+       coalesce(max(cf.n), 0)                                                       as confirmed_corrections,
+       count(a.id) filter (where a.is_gold)                                         as gold_total,
+       count(a.id) filter (where a.gold_pass)                                       as gold_pass,
+       coalesce(max(ag.n), 0)                                                       as agreement_n,
+       coalesce(max(ag.agree), 0)                                                   as agreement_hits,
+       percentile_cont(0.5) within group (order by a.ms_spent)
+         filter (where a.verdict <> 'skip')                                         as median_ms,
+       avg(case when a.verdict = 'correct' then 1.0 else 0.0 end)
+         filter (where a.verdict <> 'skip' and not a.is_gold)                       as share_correct,
+       count(a.id) filter (where a.created_at > now() - interval '1 hour')          as last_hour,
+       count(a.id) filter (where a.created_at > now() - interval '1 day')           as last_day,
+       max(a.created_at)                                                            as last_answer_at,
+       -- trust: smoothed share of check items answered right (starts at 2/3, never 0 or 1)
+       (count(a.id) filter (where a.gold_pass) + 2.0) / (count(a.id) filter (where a.is_gold) + 3.0) as trust
+from contributors c
+left join answers a on a.contributor_id = c.id
+left join agreement ag on ag.contributor_id = c.id
+left join confirmed cf on cf.contributor_id = c.id
+group by c.id;
+
+-- Automatic spam / low-quality signals. Thresholds are deliberately mild: they flag for a human
+-- look (admin page) and down-weight in consensus; only an admin blocks.
+create or replace view contributor_flags as
+select s.*,
+       array_remove(array[
+         case when s.reviews >= 20 and s.median_ms < 1200 then 'too_fast' end,
+         case when s.gold_total >= 5 and s.gold_pass::numeric / s.gold_total < 0.6 then 'fails_checks' end,
+         case when s.reviews >= 30 and (s.share_correct > 0.97 or s.share_correct < 0.03) then 'same_button' end,
+         case when s.agreement_n >= 20 and s.agreement_hits::numeric / s.agreement_n < 0.5 then 'disagrees' end,
+         case when s.last_hour > 600 then 'burst' end
+       ], null) as flags
+from contributor_stats s;
+
+-- Leaderboard points: 1 per review, +3 per correction someone else confirmed, scaled by trust.
+create or replace view leaderboard as
+select f.code, f.handle, f.reviews, f.corrections, f.confirmed_corrections, f.gold_total, f.gold_pass,
+       case when f.gold_total > 0 then round(100.0 * f.gold_pass / f.gold_total) end                as check_accuracy,
+       case when f.agreement_n > 0 then round(100.0 * f.agreement_hits / f.agreement_n) end         as agreement,
+       round((f.reviews + 3 * f.confirmed_corrections) * f.trust * 1.5)::int                        as points,
+       f.last_answer_at, f.created_at
+from contributor_flags f
+where f.status = 'active' and cardinality(f.flags) = 0 and f.reviews > 0;
+
+-- What the crowd decided about each sample. Votes are weighted by each person's trust;
+-- flagged people count 1/5, blocked people not at all.
+create or replace view sample_consensus as
+with w as (
+  select id, case when status = 'blocked' then 0
+                  when status = 'flagged' or cardinality(flags) > 0 then trust * 0.2
+                  else trust end as weight
+  from contributor_flags
+), v as (
+  select s.id,
+         count(a.id) filter (where a.verdict = 'correct')                       as n_correct,
+         count(a.id) filter (where a.verdict = 'incorrect')                     as n_incorrect,
+         coalesce(sum(w.weight) filter (where a.verdict = 'correct'), 0)        as w_correct,
+         coalesce(sum(w.weight) filter (where a.verdict = 'incorrect'), 0)      as w_incorrect,
+         count(a.id) filter (where a.bad_crop)                                  as n_bad_crop
+  from samples s
+  left join answers a on a.sample_id = s.id
+  left join w on w.id = a.contributor_id
+  group by s.id
+)
+select s.id, s.dataset, s.font, s.kind, s.image_url, s.context_url, s.proposed_text, s.source_ref, s.is_gold,
+       v.n_correct, v.n_incorrect, v.n_bad_crop,
+       round(v.w_correct::numeric, 3) as w_correct, round(v.w_incorrect::numeric, 3) as w_incorrect,
+       tc.correction as top_correction, coalesce(tc.n, 0) as top_correction_votes,
+       case
+         when v.n_bad_crop >= 2 and v.n_bad_crop * 2 >= v.n_correct + v.n_incorrect then 'bad_crop'
+         when v.n_correct >= 2 and v.w_correct >= 2 * v.w_incorrect                then 'verified'
+         when coalesce(tc.n, 0) >= 2 and v.w_incorrect > v.w_correct               then 'corrected'
+         when v.n_incorrect >= 2 and v.w_incorrect >= 2 * v.w_correct              then 'needs_text'
+         when v.n_correct + v.n_incorrect >= s.target_reviews                      then 'disputed'
+         else 'open'
+       end as status,
+       case
+         when v.n_correct >= 2 and v.w_correct >= 2 * v.w_incorrect and not (v.n_bad_crop >= 2 and v.n_bad_crop * 2 >= v.n_correct + v.n_incorrect)
+           then s.proposed_text
+         when coalesce(tc.n, 0) >= 2 and v.w_incorrect > v.w_correct then tc.correction
+       end as final_text
+from samples s
+join v on v.id = s.id
+left join lateral (
+  select a.correction, count(*) as n from answers a
+  where a.sample_id = s.id and a.correction is not null
+  group by a.correction order by count(*) desc, a.correction limit 1
+) tc on true;

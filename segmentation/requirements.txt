@@ -1,0 +1,5 @@
+numpy
+opencv-python-headless
+pillow        # needs libraqm only for render_demo_pages.py
+scipy
+onnxruntime   # only for --proposals model
