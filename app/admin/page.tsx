@@ -154,7 +154,7 @@ function Groups() {
   const t = d.totals;
   return (
     <>
-      <p className="muted small">Groups of look-alike chunks. {t.labelled_groups} of {t.groups} groups labelled, covering {t.labelled_chunks.toLocaleString()} of {t.chunks.toLocaleString()} chunks.
+      <p className="muted small">Groups of look-alike chunks. {t.labelled_groups} of {t.groups} groups answered; {t.labelled_chunks.toLocaleString()} of {(t.distinct_chunks ?? t.chunks).toLocaleString()} chunks labelled at least once.
         <b> Same</b> = how many people decided exactly alike. <a href="/api/export?format=csv&view=chunk_labels">Download chunk labels (CSV)</a></p>
       <div className="card" style={{ overflowX: "auto" }}>
         <table>

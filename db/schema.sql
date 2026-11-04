@@ -161,6 +161,8 @@ create table if not exists chunk_groups (
   created_at    timestamptz not null default now()
 );
 create index if not exists chunk_groups_size on chunk_groups (size desc);
+alter table chunk_groups add column if not exists family text;  -- groups cut from one big look-alike cluster
+alter table match_boards add column if not exists skeleton text; -- the letter family a Match board is about
 
 -- One person's decision on a group: which members are NOT the same (odd), and whether the text is right.
 create table if not exists group_answers (
@@ -177,6 +179,9 @@ create table if not exists group_answers (
 );
 create index if not exists group_answers_by_contributor on group_answers (contributor_id, created_at desc);
 -- 'not_chunk': the group is only marks or specks, not proper pieces of words
+-- the chunks this person was actually shown (a group is shown without chunks they labelled before);
+-- null = the whole group (answers from before this was recorded)
+alter table group_answers add column if not exists shown jsonb;
 alter table group_answers drop constraint if exists group_answers_verdict_check;
 alter table group_answers add constraint group_answers_verdict_check check (verdict in ('correct', 'incorrect', 'skip', 'not_chunk'));
 

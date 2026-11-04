@@ -54,7 +54,7 @@ export function GroupReview() {
     setBusy(true); setErr("");
     try {
       const r = await api<{ stats: Stats }>("/api/group/answer", {
-        method: "POST", json: { groupId: cur.id, odd: [...odd], verdict, correction, ms: Date.now() - shownAt.current },
+        method: "POST", json: { groupId: cur.id, odd: [...odd], shown: cur.members.map((m) => m.chunk), verdict, correction, ms: Date.now() - shownAt.current },
       });
       setStats(r.stats);
       const rec: Done = { group: cur, odd: [...odd], verdict, correction };

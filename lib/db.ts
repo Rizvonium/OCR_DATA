@@ -153,16 +153,22 @@ async function seedStarterGroups(query: Query) {
   const [seen] = await query<{ v: string }>("select v from app_meta where k = 'starter_groups'");
   if (seen?.v === hash) return;
   const rows = text.split("\n").filter(Boolean).map((l) => JSON.parse(l)).map((g) => ({
-    id: g.id, members: g.members.map((m: any) => ({ chunk: m.chunk, page: m.page, line: m.line, chunk_index: m.chunk_index, clean_url: m.clean_url, text: m.text })),
+    id: g.id, family: g.family ?? g.id, members: g.members.map((m: any) => ({ chunk: m.chunk, page: m.page, line: m.line, chunk_index: m.chunk_index, clean_url: m.clean_url, text: m.text })),
     proposed_text: g.proposed_text || "", size: g.size, fonts: g.fonts || [],
   }));
   for (let i = 0; i < rows.length; i += 500) {
     await query(
-      `insert into chunk_groups (id, members, proposed_text, size, fonts)
-       select id, members, proposed_text, size, fonts from jsonb_to_recordset(($1::text)::jsonb)
-         as x(id text, members jsonb, proposed_text text, size int, fonts jsonb)
+      `insert into chunk_groups (id, family, members, proposed_text, size, fonts)
+       select id, family, members, proposed_text, size, fonts from jsonb_to_recordset(($1::text)::jsonb)
+         as x(id text, family text, members jsonb, proposed_text text, size int, fonts jsonb)
        on conflict (id) do update set members = excluded.members, proposed_text = excluded.proposed_text, size = excluded.size, fonts = excluded.fonts
          where not exists (select 1 from group_answers a where a.group_id = excluded.id)`, [JSON.stringify(rows.slice(i, i + 500))]);
+  }
+  // the family is only a label for ordering: set it on answered groups too
+  for (let i = 0; i < rows.length; i += 1000) {
+    await query(
+      `update chunk_groups g set family = x.family from jsonb_to_recordset(($1::text)::jsonb) as x(id text, family text)
+       where g.id = x.id and g.family is distinct from x.family`, [JSON.stringify(rows.slice(i, i + 1000).map((r) => ({ id: r.id, family: r.family })))]);
   }
   await query(
     `delete from chunk_groups g where not exists (select 1 from jsonb_array_elements_text(($1::text)::jsonb) m(id) where m.id = g.id)
@@ -179,12 +185,14 @@ async function seedStarterBoards(query: Query) {
   const hash = crypto.createHash("sha256").update(text).digest("hex");
   const [seen] = await query<{ v: string }>("select v from app_meta where k = 'starter_boards'");
   if (seen?.v === hash) return;
-  const rows = text.split("\n").filter(Boolean).map((l) => JSON.parse(l)).map((b) => ({ id: b.id, tiles: b.tiles, texts: b.texts || [] }));
+  const rows = text.split("\n").filter(Boolean).map((l) => JSON.parse(l)).map((b) => ({ id: b.id, tiles: b.tiles, texts: b.texts || [], skeleton: b.skeleton ?? null }));
   for (let i = 0; i < rows.length; i += 200) {
     await query(
-      `insert into match_boards (id, tiles, texts) select id, tiles, texts from jsonb_to_recordset(($1::text)::jsonb) as x(id text, tiles jsonb, texts jsonb)
-       on conflict (id) do update set tiles = excluded.tiles, texts = excluded.texts
-         where not exists (select 1 from match_answers a where a.board_id = excluded.id)`, [JSON.stringify(rows.slice(i, i + 200))]);
+      `insert into match_boards (id, tiles, texts, skeleton) select id, tiles, texts, skeleton
+       from jsonb_to_recordset(($1::text)::jsonb) as x(id text, tiles jsonb, texts jsonb, skeleton text)
+       on conflict (id) do update set skeleton = excluded.skeleton,
+         tiles = case when exists (select 1 from match_answers a where a.board_id = excluded.id) then match_boards.tiles else excluded.tiles end,
+         texts = case when exists (select 1 from match_answers a where a.board_id = excluded.id) then match_boards.texts else excluded.texts end`, [JSON.stringify(rows.slice(i, i + 200))]);
   }
   await query(
     `delete from match_boards b where not exists (select 1 from jsonb_array_elements_text(($1::text)::jsonb) m(id) where m.id = b.id)

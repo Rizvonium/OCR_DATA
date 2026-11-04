@@ -147,11 +147,14 @@ def main():
             singles += 1
             continue
         proposed = collections.Counter(m["text"] for m in members if m["text"]).most_common(1)
+        # groups cut from one big cluster (e.g. hundreds of ا) share a family, so the app can show
+        # a person other families before the rest of one they have already done
+        family = "f" + hashlib.sha1("|".join(sorted(m["chunk"] for m in members)).encode()).hexdigest()[:10]
         for k in range(0, len(members), a.max_size):
             part = members[k:k + a.max_size]
             # the id comes from the members, so a rebuilt group keeps its id only if its content is the same
             gid = "g" + hashlib.sha1("|".join(sorted(m["chunk"] for m in part)).encode()).hexdigest()[:12]
-            groups.append({"id": gid, "members": part, "proposed_text": proposed[0][0] if proposed else "",
+            groups.append({"id": gid, "family": family, "members": part, "proposed_text": proposed[0][0] if proposed else "",
                            "size": len(part), "fonts": sorted({m["font"] for m in part if m["font"]})})
     with open(a.out, "w", encoding="utf-8") as fh:
         for g in groups:

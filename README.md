@@ -33,7 +33,17 @@ same printed piece repeats a lot, so one decision labels many chunks:
    *Is this what they say?* **Correct** → next group. **Incorrect** → type the right text: it labels
    every chunk of the group not marked different. Can't tell → skip.
 
-‹ Back / Next › go through earlier groups to change an answer. Grouping first requires the same **mark
+‹ Back / Next › go through earlier groups to change an answer.
+
+**What is shown, and to whom** (tracked per chunk, not per group):
+- a chunk you have labelled is never shown to you again, in any group; a group is shown without those
+  chunks (the answer records exactly which chunks were shown, and labels only those);
+- variety: a reading among your last 8 groups waits (ا does not follow ا), and groups from a look-alike
+  family you have done come after new families;
+- chunks nobody has labelled come first; a chunk goes to at most 3 different people (`LABELS_PER_CHUNK`),
+  the repeats by other people being the correctness check; then it is not shown any more.
+Match boards likewise: letter families you have not played first, at most 3 players per board
+(`PLAYS_PER_BOARD`). Grouping first requires the same **mark
 signature** (number and place of dots and signs, so ا آ أ, و ز ژ never mix), then a close match of the
 whole piece **and** of its marks (each mark also compared enlarged, so a madd and a hamza differ).
 On the 30 starter pages: 4,337 chunks (lone marks left out) → 3,148 groups (338 of 2–30 look-alikes covering 1,626 chunks;

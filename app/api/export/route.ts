@@ -53,7 +53,7 @@ export async function GET(req: Request) {
                 a.verdict, c.handle as reviewer, c.code as reviewer_code, a.updated_at as time
          from group_answers a join chunk_groups g on g.id = a.group_id join contributors c on c.id = a.contributor_id,
               jsonb_array_elements(g.members) m
-         where a.verdict <> 'skip' and not (a.odd ? (m->>'chunk')))
+         where a.verdict <> 'skip' and not (a.odd ? (m->>'chunk')) and (a.shown is null or a.shown ? (m->>'chunk')))
        select l.*, count(*) over (partition by l.chunk, l.text) as agree from labels l order by l.chunk, l.time`);
     for (const r of rows as any[]) if (typeof r.clean_url === "string" && r.clean_url.startsWith("/")) r.clean_url = u.origin + r.clean_url;
     if (csv) {

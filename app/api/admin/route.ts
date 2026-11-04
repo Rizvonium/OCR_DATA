@@ -41,7 +41,9 @@ export async function GET(req: Request) {
   if (u.searchParams.get("view") === "groups") {
     // answered groups with every person's decision; "same" = people who decided exactly alike
     const rows = await q(
-      `select g.id, g.size, g.proposed_text, g.members, a.verdict, a.correction, a.odd, a.updated_at, c.handle, c.code,
+      `select g.id, g.size, g.proposed_text,
+              case when a.shown is null then g.members else (select jsonb_agg(m) from jsonb_array_elements(g.members) m where a.shown ? (m->>'chunk')) end as members,
+              a.verdict, a.correction, a.odd, a.updated_at, c.handle, c.code,
               (select count(*)::int from group_answers b where b.group_id = a.group_id and b.verdict = a.verdict
                  and coalesce(b.correction, '') = coalesce(a.correction, '') and b.odd = a.odd) as same
        from group_answers a join chunk_groups g on g.id = a.group_id join contributors c on c.id = a.contributor_id
@@ -49,7 +51,9 @@ export async function GET(req: Request) {
     const [t] = await q<any>(
       `select (select count(*)::int from chunk_groups) as groups, (select coalesce(sum(size), 0)::int from chunk_groups) as chunks,
               (select count(distinct group_id)::int from group_answers where verdict <> 'skip') as labelled_groups,
-              (select coalesce(sum(g.size), 0)::int from chunk_groups g where exists (select 1 from group_answers a where a.group_id = g.id and a.verdict <> 'skip')) as labelled_chunks`);
+              (select count(distinct m->>'chunk')::int from group_answers a join chunk_groups g on g.id = a.group_id, jsonb_array_elements(g.members) m
+                 where a.verdict <> 'skip' and not (a.odd ? (m->>'chunk')) and (a.shown is null or a.shown ? (m->>'chunk'))) as labelled_chunks,
+              (select count(distinct m->>'chunk')::int from chunk_groups g, jsonb_array_elements(g.members) m) as distinct_chunks`);
     return json({ rows, totals: t });
   }
   if (u.searchParams.get("view") === "pages") {
