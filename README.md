@@ -13,7 +13,7 @@ combined into a clean dataset for training Kashmiri OCR.
 | **Leaderboard** | points, reviews, this week / all time, and the progress of the whole dataset. |
 | **Add photos** | photograph Kashmiri pages; they are checked for blur and later cut into words. |
 | **Profile** | your stats; sign out on this device. |
-| **Admin** (`/admin`) | **who answered what** (every picture, every reviewer's answer, right or wrong), **data per font**, spam flags, block / unblock, JSONL export. |
+| **Admin** (🔒 button, `/admin`) | sign in with `ADMIN_KEY` (stays signed in 30 days). Tabs: **People** (name, code, joined, last seen, reviews, points, check items, agreement, speed, photos, devices, flags; block, **reset PIN**), **Answers** (every picture with every person's answer, or one person's), **Photos** (keep / reject uploads), **Data & export** (CSV / JSONL, data per font). PINs are stored one-way and cannot be shown, only reset. |
 
 Reviewers are never told the font, the dataset or which pictures are check items: none of it is sent
 to the browser, and picture file names are hashes.

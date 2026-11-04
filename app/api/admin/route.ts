@@ -1,12 +1,12 @@
 import { q } from "@/lib/db";
 import { body, fail, json } from "@/lib/http";
-import { isAdmin } from "@/lib/identity";
+import { PIN_RE, hashPin, isAdmin } from "@/lib/identity";
 
 export const dynamic = "force-dynamic";
 
 // Every answer to every picture, with who gave it and whether it was right.
 // "Right" = matches the known answer on check items, or the crowd's decision on other pictures.
-async function answersView(only: string, offset: number) {
+async function answersView(only: string, offset: number, who: string | null) {
   return q(
     `select c.id, c.image_url, c.font, c.proposed_text, c.is_gold, c.status, c.final_text,
             s.gold_verdict, case when s.gold_verdict = 'correct' then s.proposed_text else s.gold_text end as known_text,
@@ -22,8 +22,9 @@ async function answersView(only: string, offset: number) {
      from sample_consensus c join samples s on s.id = c.id join answers a on a.sample_id = c.id
      join contributors k on k.id = a.contributor_id
      where ($1 = 'all' or ($1 = 'gold' and s.is_gold) or ($1 = 'decided' and c.status in ('verified', 'corrected')))
+       and ($3::text is null or c.id in (select a2.sample_id from answers a2 join contributors k2 on k2.id = a2.contributor_id where k2.code = $3))
      group by c.id, c.image_url, c.font, c.proposed_text, c.is_gold, c.status, c.final_text, s.gold_verdict, s.proposed_text, s.gold_text
-     order by max(a.created_at) desc limit 50 offset $2`, [only, offset]);
+     order by max(a.created_at) desc limit 100 offset $2`, [only, offset, who]);
 }
 
 export async function GET(req: Request) {
@@ -40,12 +41,18 @@ export async function GET(req: Request) {
     return json({ rows, counts: Object.fromEntries(counts.map((r: any) => [r.status, r.n])) });
   }
   if (u.searchParams.get("view") === "answers")
-    return json({ rows: await answersView(u.searchParams.get("only") || "gold", Number(u.searchParams.get("offset")) || 0) });
+    return json({ rows: await answersView(u.searchParams.get("only") || "gold", Number(u.searchParams.get("offset")) || 0, u.searchParams.get("who")) });
   const people = await q(
-    `select code, handle, status, reviews::int, skips::int, corrections::int, confirmed_corrections::int, gold_total::int, gold_pass::int,
-            agreement_n::int, agreement_hits::int, round(median_ms)::int as median_ms, round(share_correct * 100)::int as pct_correct,
-            last_hour::int, last_day::int, round(trust::numeric, 2)::float as trust, flags, created_at, last_answer_at
-     from contributor_flags order by cardinality(flags) desc, status desc, reviews desc limit 500`);
+    `select f.code, f.handle, f.status, f.reviews::int, f.skips::int, f.corrections::int, f.confirmed_corrections::int,
+            f.gold_total::int, f.gold_pass::int, f.agreement_n::int, f.agreement_hits::int, round(f.median_ms)::int as median_ms,
+            round(f.share_correct * 100)::int as pct_correct, f.last_hour::int, f.last_day::int, round(f.trust::numeric, 2)::float as trust,
+            f.flags, f.created_at, f.last_seen_at, f.last_answer_at, c.admin_note,
+            c.pin_hash is not null as has_pin, c.locked_until > now() as locked,
+            (select count(*)::int from sessions s where s.contributor_id = c.id) as devices,
+            (select count(*)::int from uploads u where u.contributor_id = c.id) as photos,
+            l.points::int as points
+     from contributor_flags f join contributors c on c.id = f.id left join leaderboard l on l.code = f.code
+     order by cardinality(f.flags) desc, f.reviews desc limit 1000`);
   const status = await q("select dataset, status, count(*)::int as n from sample_consensus where not is_gold group by dataset, status order by dataset, status");
   const disputed = await q(
     `select id, image_url, proposed_text, n_correct::int, n_incorrect::int, n_bad_crop::int, top_correction, top_correction_votes::int, status
@@ -71,6 +78,19 @@ export async function POST(req: Request) {
     const r = await q("update contributors set status = $2, admin_note = coalesce($3, admin_note) where code = $1 returning code, status",
       [b.code, b.status, b.note ?? null]);
     return r.length ? json(r[0]) : fail("No such contributor.", 404);
+  }
+  if (b.action === "reset_pin") {
+    // PINs are stored one-way (they cannot be read back), so the admin sets a new one instead.
+    if (typeof b.pin !== "string" || !PIN_RE.test(b.pin)) return fail("The new PIN must be 4 to 6 digits.");
+    const r = await q("update contributors set pin_hash = $2, failed_pins = 0, locked_until = null where code = $1 returning id",
+      [b.code, hashPin(b.pin)]);
+    if (!r.length) return fail("No such contributor.", 404);
+    await q("delete from sessions where contributor_id = $1", [r[0].id]); // signed out everywhere; they sign in with the new PIN
+    return json({ ok: true });
+  }
+  if (b.action === "note") {
+    await q("update contributors set admin_note = $2 where code = $1", [b.code, typeof b.note === "string" ? b.note.slice(0, 500) : null]);
+    return json({ ok: true });
   }
   if (b.action === "upload_status") {
     if (!["new", "kept", "rejected", "used"].includes(b.status)) return fail("Unknown status.");

@@ -48,12 +48,26 @@ export function cleanHandle(raw: unknown): string | null {
   return h;
 }
 
-export function isAdmin(req: Request): boolean {
+// Admin: the ADMIN_KEY itself (header x-admin-key or ?key=, for scripts and Google Sheets), or the
+// admin cookie set by signing in on /admin. The cookie holds a hash derived from the key, never the key,
+// and stops working as soon as ADMIN_KEY is changed.
+export const ADMIN_COOKIE = "ks_admin";
+export const adminToken = (key: string) => sha256("ks-admin-session:" + key);
+const same = (a: string, b: string) => crypto.timingSafeEqual(Buffer.from(sha256(a)), Buffer.from(sha256(b)));
+
+export function adminKeyMatches(got: string): boolean {
   const want = process.env.ADMIN_KEY;
   if (!want) return process.env.NODE_ENV !== "production"; // open locally, locked in production
+  return same(got, want);
+}
+
+export function isAdmin(req: Request): boolean {
+  const want = process.env.ADMIN_KEY;
+  if (!want) return process.env.NODE_ENV !== "production";
   const got = req.headers.get("x-admin-key") || new URL(req.url).searchParams.get("key") || "";
-  const a = Buffer.from(sha256(got)), b = Buffer.from(sha256(want));
-  return crypto.timingSafeEqual(a, b);
+  if (got && same(got, want)) return true;
+  const cookie = (req.headers.get("cookie") || "").split(/;\s*/).find((c) => c.startsWith(ADMIN_COOKIE + "="));
+  return !!cookie && same(decodeURIComponent(cookie.slice(ADMIN_COOKIE.length + 1)), adminToken(want));
 }
 
 // ---------------------------------------------------------------- PIN

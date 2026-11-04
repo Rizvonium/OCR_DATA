@@ -262,3 +262,9 @@ tr.me td{background:var(--accent-soft)}
 .up-card{padding:8px;display:flex;flex-direction:column;gap:3px}
 .up-card img{width:100%;aspect-ratio:3/4;object-fit:cover;border-radius:8px;background:var(--raised)}
 @media (max-width:640px){.up-fields{grid-template-columns:1fr}}
+/* ------------------------------------------------------------ admin */
+.admin-login{max-width:420px;margin:40px auto}
+.admin-head{display:flex;justify-content:space-between;align-items:center;gap:12px}
+.admin-tabs{margin:6px 0 16px}
+.admin-table td{vertical-align:top}
+.admin-table td.small{white-space:nowrap}
