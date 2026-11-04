@@ -12,12 +12,20 @@ type Row = Record<string, any>;
 export type Query = <T extends Row = Row>(text: string, params?: unknown[]) => Promise<T[]>;
 
 const g = globalThis as unknown as { __ksdb?: Promise<Query> };
-export const isPreview = () => !process.env.DATABASE_URL && !!process.env.VERCEL;
+// DATABASE_URL (set by hand, or by Vercel's Neon storage) or POSTGRES_URL (Vercel's Supabase/Neon
+// integrations). Extra URL options those integrations add (sslmode, pgbouncer, supa...) are removed:
+// the driver below sets SSL itself and some of them are not valid Postgres settings.
+export function databaseUrl(): string | null {
+  const raw = process.env.DATABASE_URL || process.env.POSTGRES_URL;
+  if (!raw) return null;
+  try { const u = new URL(raw); u.search = ""; return u.toString(); } catch { return raw; }
+}
+export const isPreview = () => !databaseUrl() && !!process.env.VERCEL;
 const file = (rel: string) => path.join(process.cwd(), rel);
 
 async function connect(): Promise<Query> {
   const schema = fs.readFileSync(file("db/schema.sql"), "utf8");
-  const url = process.env.DATABASE_URL;
+  const url = databaseUrl();
   let query: Query;
   if (url) {
     const postgres = (await import("postgres")).default;

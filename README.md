@@ -64,7 +64,12 @@ can try it and share the link — then connect Supabase to keep the answers.
 This app does not use Supabase logins at all. Supabase is only the database; every reviewer gets their
 own row in the `contributors` table, created by the app, so there is no limit on the number of reviewers.
 
-You need two values from Supabase, not the `sb_publishable_…` key (that key is meant for browsers and
+**Easiest: a database made by Vercel.** Vercel → your project → **Storage** → **Create Database** →
+**Neon** (Postgres, free plan) → connect it to this project (all environments) → **Redeploy**. Vercel
+adds the connection variable itself; the app creates its tables and loads the starter pictures on its
+first start. Then add `ADMIN_KEY` under Settings → Environment Variables and redeploy once more.
+
+**Or Supabase**, as below. You need two values from Supabase, not the `sb_publishable_…` key (that key is meant for browsers and
 this app does not use it — the server talks to Postgres directly):
 
 1. **Database connection string** — Supabase → your project → **Connect** → *Transaction pooler*
