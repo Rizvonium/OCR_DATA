@@ -6,7 +6,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api, useApp, type Stats } from "./AppState";
 import { Check, Cross, Leaf } from "./icons";
-import { Keyboard } from "./Keyboard";
+import { Keyboard, applyKey, usePhoneKeyboard } from "./Keyboard";
 import { useLeaveWarning } from "./useLeaveWarning";
 
 type Box = [number, number, number, number];
@@ -323,13 +323,8 @@ export function PageReview({ withText = false }: { withText?: boolean }) {
     setMode("fix");
   };
 
-  const insert = (s: string) => {
-    const el = input.current; if (!el) return;
-    const a = el.selectionStart ?? text.length, b = el.selectionEnd ?? text.length;
-    let v: string, p: number;
-    if (s === "\b") { const f = a === b ? Math.max(0, a - 1) : a; v = text.slice(0, f) + text.slice(b); p = f; } else { v = text.slice(0, a) + s + text.slice(b); p = a + s.length; }
-    setText(v); requestAnimationFrame(() => { el.focus(); el.setSelectionRange(p, p); });
-  };
+  const phoneKb = usePhoneKeyboard();
+  const insert = (k: string) => applyKey(input.current, text, k, setText);
 
   // ---------------- screens
   if (none) return (
@@ -466,10 +461,10 @@ export function PageReview({ withText = false }: { withText?: boolean }) {
                 <div className="fix">
                   <div className="field" style={{ marginBottom: 0 }}>
                     <label htmlFor="fix">Type what the chunk says</label>
-                    <input id="fix" ref={input} className="fix-input ks" dir="rtl" value={text} onChange={(e) => setText(e.target.value)} lang="ks" autoComplete="off" spellCheck={false}
+                    <input id="fix" ref={input} className="fix-input ks" dir="rtl" inputMode={phoneKb.inputMode} value={text} onChange={(e) => setText(e.target.value)} lang="ks" autoComplete="off" spellCheck={false}
                       onKeyDown={(e) => { if (e.key === "Enter" && text.trim()) { e.preventDefault(); save("text", "incorrect", { ...meta, correction: text }); } }} />
                   </div>
-                  <Keyboard onKey={insert} />
+                  <Keyboard onKey={insert} phone={phoneKb} />
                   <div className="fix-actions" style={{ marginTop: 14 }}>
                     <button className="btn primary" disabled={busy || !text.trim()} onClick={() => save("text", "incorrect", { ...meta, correction: text })}>Save text</button>
                     <button className="btn" disabled={busy} onClick={() => save("text", "incorrect", meta)}>Wrong, but I can&apos;t type it</button>

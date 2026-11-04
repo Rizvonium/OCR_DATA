@@ -107,6 +107,10 @@ python3 segmentation/make_boards.py data/match/manifest.jsonl data/pages/manifes
 - **Label** and **Segmentation** reopen the same group / page after a reload; unsaved split, join and
   remove edits are kept on the phone until saved.
 - The browser asks before leaving when photos are picked but not uploaded, or marks are not yet saved.
+- Typing a correction on a phone uses only the app's Kashmiri keyboard: the phone's own keyboard stays
+  closed (`inputmode="none"`). **← →** move the cursor one place, **⇤ ⇥** to the left / right end (they
+  move the way they point, in right-to-left text), so a sign can be added exactly where it belongs.
+  "⌨ Phone keyboard" brings the phone's keyboard back (e.g. for a Kashmiri keyboard app); remembered.
 
 ## Run it on your computer
 

@@ -4,7 +4,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api, useApp, type Stats } from "./AppState";
 import { Check, Cross, Leaf } from "./icons";
-import { Keyboard } from "./Keyboard";
+import { Keyboard, applyKey, usePhoneKeyboard } from "./Keyboard";
 import { useLeaveWarning } from "./useLeaveWarning";
 
 type Member = { chunk: string; clean_url: string; text: string };
@@ -74,13 +74,8 @@ export function GroupReview() {
   const next = () => { if (pos === null) return; const p = pos + 1 < history.length ? pos + 1 : null; setPos(p); open(p === null ? group : history[p].group, p === null ? undefined : history[p]); };
   const toggle = (id: string) => setOdd((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n; });
   const startFix = () => { setText(past?.correction || cur?.proposed_text || ""); setPhase("fix"); setTimeout(() => { input.current?.focus(); input.current?.select(); }, 30); };
-  const insert = (s: string) => {
-    const el = input.current; if (!el) return;
-    const a = el.selectionStart ?? text.length, b = el.selectionEnd ?? text.length;
-    let v: string, p: number;
-    if (s === "\b") { const f = a === b ? Math.max(0, a - 1) : a; v = text.slice(0, f) + text.slice(b); p = f; } else { v = text.slice(0, a) + s + text.slice(b); p = a + s.length; }
-    setText(v); requestAnimationFrame(() => { el.focus(); el.setSelectionRange(p, p); });
-  };
+  const phoneKb = usePhoneKeyboard();
+  const insert = (k: string) => applyKey(input.current, text, k, setText);
 
   if (none && !past) return (
     <div className="card empty"><Leaf /><h2 style={{ marginTop: 12 }}>Every group is labelled — thank you!</h2>
@@ -169,10 +164,10 @@ export function GroupReview() {
               <div className="fix">
                 <div className="field" style={{ marginBottom: 0 }}>
                   <label htmlFor="fix">Type what {same.length > 1 ? "they say" : "it says"}</label>
-                  <input id="fix" ref={input} className="fix-input ks" dir="rtl" value={text} onChange={(e) => setText(e.target.value)} lang="ks" autoComplete="off" spellCheck={false}
+                  <input id="fix" ref={input} className="fix-input ks" dir="rtl" inputMode={phoneKb.inputMode} value={text} onChange={(e) => setText(e.target.value)} lang="ks" autoComplete="off" spellCheck={false}
                     onKeyDown={(e) => { if (e.key === "Enter" && text.trim()) { e.preventDefault(); save("incorrect", text); } }} />
                 </div>
-                <Keyboard onKey={insert} />
+                <Keyboard onKey={insert} phone={phoneKb} />
                 <div className="fix-actions" style={{ marginTop: 14 }}>
                   <button className="btn primary" disabled={busy || !text.trim()} onClick={() => save("incorrect", text)}>Save text</button>
                   <button className="btn" disabled={busy} onClick={() => save("incorrect")}>Wrong, but I can&apos;t type it</button>

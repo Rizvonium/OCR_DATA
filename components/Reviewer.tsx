@@ -3,7 +3,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api, useApp, type Stats } from "./AppState";
 import { Check, Chevron, Cross, Leaf } from "./icons";
-import { Keyboard } from "./Keyboard";
+import { Keyboard, applyKey, usePhoneKeyboard } from "./Keyboard";
 
 type Task = { id: string; kind: string; image_url: string; context_url: string | null; proposed_text: string; ticket: string };
 type Gold = { pass: boolean | null; verdict: string; text: string } | null;
@@ -107,15 +107,8 @@ export function Reviewer() {
     setTimeout(() => { input.current?.focus(); input.current?.select(); }, 30);
   };
 
-  const insert = (s: string) => {
-    const el = input.current; if (!el) return;
-    const a = el.selectionStart ?? text.length, b = el.selectionEnd ?? text.length;
-    let v: string, pos: number;
-    if (s === "\b") { const from = a === b ? Math.max(0, a - 1) : a; v = text.slice(0, from) + text.slice(b); pos = from; }
-    else { v = text.slice(0, a) + s + text.slice(b); pos = a + s.length; }
-    setText(v);
-    requestAnimationFrame(() => { el.focus(); el.setSelectionRange(pos, pos); });
-  };
+  const phoneKb = usePhoneKeyboard();
+  const insert = (k: string) => applyKey(input.current, text, k, setText);
 
   // keyboard shortcuts: C/1 correct, X/2 incorrect, S skip, Esc back
   useEffect(() => {
@@ -207,9 +200,9 @@ export function Reviewer() {
               <div className="fix">
                 <div className="field" style={{ marginBottom: 0 }}>
                   <label htmlFor="fix">Type what the picture actually says (optional)</label>
-                  <input id="fix" ref={input} className="fix-input ks" dir="rtl" value={text} onChange={(e) => setText(e.target.value)} onKeyDown={onInputKey} autoComplete="off" spellCheck={false} lang="ks" />
+                  <input id="fix" ref={input} className="fix-input ks" dir="rtl" inputMode={phoneKb.inputMode} value={text} onChange={(e) => setText(e.target.value)} onKeyDown={onInputKey} autoComplete="off" spellCheck={false} lang="ks" />
                 </div>
-                <Keyboard onKey={insert} />
+                <Keyboard onKey={insert} phone={phoneKb} />
                 <label className="check" style={{ marginTop: 16 }}>
                   <input type="checkbox" checked={badCrop} onChange={(e) => setBadCrop(e.target.checked)} />
                   <span>The box itself is wrong — it cuts letters off, or holds more or less than one {cur.kind === "line" ? "line" : "word"}.</span>
