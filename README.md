@@ -61,7 +61,11 @@ A page goes through two levels, always with the context on top:
 1. **Lines** — the page with the lines found as numbered bands. *Are the lines correct?* If not: tap
    inside a band to split it, tap between two bands to join them (Zoom for precision).
 2. **Chunks of each line** — the page with that line in blue, and the line with its chunks (same word,
-   same colour). *Nothing missing, every dot inside its box?* If not: ✂ split, ⊕ join, ✕ remove.
+   same colour). *Nothing missing, every dot inside its box?* If not: ✂ split, ⊕ join (tap a mark, then
+   the chunk it belongs to — any two boxes, not only neighbours; a tap picks the smallest box under the
+   finger, so marks inside a chunk can be chosen), ✕ remove. Or type by the numbers on the boxes:
+   `3 1` joins 3 into 1, `x 4` removes 4, several at once: `3 1, 2 1, x 4`. A mark joined into a chunk
+   keeps the chunk's text.
 
 **Heat map** shows the cleaned ink the segmenter works on. Admin → **Segmentation** shows each page's
 decisions per person and how many decided alike.

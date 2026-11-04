@@ -219,23 +219,68 @@ export function PageReview({ withText = false }: { withText?: boolean }) {
   }
 
   // ---------------- fixing chunks: split at a tap, join two neighbours, or remove a speck
+  // join `src` into `dst` (1 box): a small mark inside / beside a chunk becomes part of it and keeps the
+  // chunk's text; two whole pieces joined keep both texts in reading order
+  function joinInto(cs: Chunk[], src: number, dst: number): Chunk[] {
+    const S = cs[src], D = cs[dst];
+    const area = (c: Chunk) => (c.box[2] - c.box[0]) * (c.box[3] - c.box[1]);
+    const isMark = area(S) < 0.35 * area(D);
+    const [first, second] = S.box[2] >= D.box[2] ? [S, D] : [D, S]; // right one first (RTL)
+    const merged: Chunk = { box: union([S.box, D.box]), text: isMark ? D.text : first.text + second.text, word: D.word };
+    return cs.map((c, k) => (k === dst ? merged : c)).filter((_, k) => k !== src);
+  }
+
+  // the box under the finger: the smallest one that contains the point (marks sit inside chunks)
+  function hit(cs: Chunk[], x: number, y: number) {
+    const inside = cs.map((c, k) => ({ k, a: (c.box[2] - c.box[0]) * (c.box[3] - c.box[1]) }))
+      .filter(({ k }) => x >= cs[k].box[0] - 3 && x <= cs[k].box[2] + 3 && y >= cs[k].box[1] - 6 && y <= cs[k].box[3] + 6);
+    return inside.length ? inside.sort((p, q) => p.a - q.a)[0].k : -1;
+  }
+
   function tapChunks(x: number, y: number) {
     const cs = dChunks;
-    const i = cs.findIndex((c) => x >= c.box[0] - 3 && x <= c.box[2] + 3 && y >= c.box[1] - 6 && y <= c.box[3] + 6);
+    const i = hit(cs, x, y);
     if (i < 0) { setNote("Tap on a box."); return; }
     const c = cs[i];
-    if (tool === "remove") { setDChunks(cs.filter((_, k) => k !== i)); setOps((o) => [...o, { op: "remove", chunk: i }]); setNote(`Removed box ${i + 1}.`); return; }
+    if (tool === "remove") { setDChunks(cs.filter((_, k) => k !== i)); setOps((o) => [...o, { op: "remove", chunk: i }]); setNote(`Removed box ${i + 1}. The boxes are numbered again.`); return; }
     if (tool === "split") {
       const sx = Math.round(x);
       if (sx - c.box[0] < 3 || c.box[2] - sx < 3) { setNote("Tap further inside the box, where it should be cut."); return; }
       const right: Chunk = { box: [sx, c.box[1], c.box[2], c.box[3]], text: "", word: c.word }, left: Chunk = { box: [c.box[0], c.box[1], sx, c.box[3]], text: "", word: c.word };
       setDChunks([...cs.slice(0, i), right, left, ...cs.slice(i + 1)]); setOps((o) => [...o, { op: "split", chunk: i, x: sx }]); setNote(`Cut box ${i + 1} in two.`); return;
     }
-    if (sel === null) { setSel(i); setNote(`Box ${i + 1} chosen: now tap the box next to it.`); return; }
-    if (Math.abs(sel - i) !== 1) { setSel(i); setNote("Join only boxes that are next to each other. Box chosen again; tap its neighbour."); return; }
-    const [a, b] = sel < i ? [sel, i] : [i, sel];
-    const merged: Chunk = { box: union([cs[a].box, cs[b].box]), text: cs[a].text + cs[b].text, word: cs[a].word };
-    setDChunks([...cs.slice(0, a), merged, ...cs.slice(b + 1)]); setOps((o) => [...o, { op: "join", chunks: [a, b] }]); setSel(null); setNote(`Joined boxes ${a + 1} and ${b + 1}.`);
+    if (sel === null) { setSel(i); setNote(`Box ${i + 1} chosen. Now tap the box it belongs to.`); return; }
+    if (sel === i) { setSel(null); setNote("Choice cleared."); return; }
+    setDChunks(joinInto(cs, sel, i)); setOps((o) => [...o, { op: "join", from: sel, into: i }]); setSel(null);
+    setNote(`Joined box ${sel + 1} into box ${i + 1}. The boxes are numbered again.`);
+  }
+
+  // typed commands, by the numbers on the boxes: "3 1" joins 3 into 1, "x 4" / "remove 4" removes 4.
+  // Several at once, separated by commas: "3 1, 2 1, x 4" (numbers refer to the boxes as shown now).
+  const [cmd, setCmd] = useState("");
+  function runCommands() {
+    let cs = [...dChunks];
+    const parts = cmd.split(/[,;\n]+/).map((t) => t.trim()).filter(Boolean);
+    // number every box once, as shown, so later commands in the list still mean the same boxes
+    let ids = cs.map((_, k) => k + 1);
+    const done: string[] = [], newOps: any[] = [];
+    for (const p of parts) {
+      const rm = p.match(/^(?:x|remove|rem|del|delete|r|-)\s*(\d+)$/i);
+      const jn = p.match(/^(\d+)\s*(?:\+|>|->|→|into|in|to|\s)\s*(\d+)$/i);
+      if (rm) {
+        const k = ids.indexOf(Number(rm[1]));
+        if (k < 0) { setNote(`There is no box ${rm[1]}.`); return; }
+        cs = cs.filter((_, j) => j !== k); ids = ids.filter((_, j) => j !== k);
+        done.push(`removed ${rm[1]}`); newOps.push({ op: "remove", box: Number(rm[1]) });
+      } else if (jn) {
+        const s1 = ids.indexOf(Number(jn[1])), d1 = ids.indexOf(Number(jn[2]));
+        if (s1 < 0 || d1 < 0 || s1 === d1) { setNote(`Cannot join ${jn[1]} into ${jn[2]}.`); return; }
+        cs = joinInto(cs, s1, d1); ids = ids.filter((_, j) => j !== s1);
+        done.push(`${jn[1]} into ${jn[2]}`); newOps.push({ op: "join", from: Number(jn[1]), into: Number(jn[2]) });
+      } else { setNote(`Did not understand “${p}”. Write e.g. 3 1 (join 3 into 1) or x 4 (remove 4).`); return; }
+    }
+    setDChunks(cs); setOps((o) => [...o, ...newOps]); setCmd(""); setSel(null);
+    setNote(`Done: ${done.join(", ")}. The boxes are numbered again.`);
   }
 
   const startFix = () => {
@@ -344,7 +389,12 @@ export function PageReview({ withText = false }: { withText?: boolean }) {
                   <button aria-pressed={tool === "join"} onClick={() => { setTool("join"); setSel(null); }}>⊕ Join</button>
                   <button aria-pressed={tool === "remove"} onClick={() => { setTool("remove"); setSel(null); }}>✕ Remove</button>
                 </div>
-                <p className="small">{tool === "split" ? "Tap inside a box at the place where it should be cut." : tool === "join" ? "Tap a box, then the box next to it: they become one." : "Tap a box that holds no text (a speck or a mark from another line)."}</p>
+                <p className="small">{tool === "split" ? "Tap inside a box at the place where it should be cut." : tool === "join" ? "Tap a box (e.g. a dot or vowel sign), then the box it belongs to: it becomes part of it." : "Tap a box that holds no text (a speck or a mark from another line)."}</p>
+                <div className="cmd">
+                  <input className="input" value={cmd} onChange={(e) => setCmd(e.target.value)} placeholder="Or type numbers: 3 1  (3 into 1) · x 4  (remove 4)"
+                    onKeyDown={(e) => { if (e.key === "Enter" && cmd.trim()) { e.preventDefault(); runCommands(); } }} inputMode="text" autoComplete="off" />
+                  <button className="btn" type="button" disabled={!cmd.trim()} onClick={runCommands}>Apply</button>
+                </div>
                 {note && <p className="ok-note">{note}</p>}
                 <div className="fix-actions">
                   <button className="btn primary" disabled={busy || !dChunks.length} onClick={() => save("chunks", "incorrect", { line: step.line, edit: { chunks: dChunks, ops } })}>Save {dChunks.length} chunks</button>

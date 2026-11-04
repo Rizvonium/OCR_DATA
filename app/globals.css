@@ -335,3 +335,6 @@ tr.me td{background:var(--accent-soft)}
 @keyframes popaway{0%{transform:scale(1)}35%{transform:scale(1.22) rotate(-4deg)}100%{transform:scale(0) rotate(12deg);opacity:0}}
 .cheer{position:absolute;left:50%;top:40%;transform:translate(-50%,-50%);font:800 40px var(--ui);pointer-events:none;animation:cheer .52s var(--ease) forwards;text-shadow:0 2px 0 #fff}
 @keyframes cheer{0%{opacity:0;transform:translate(-50%,-30%) scale(.6)}40%{opacity:1;transform:translate(-50%,-55%) scale(1.1)}100%{opacity:0;transform:translate(-50%,-80%) scale(1)}}
+.cmd{display:flex;gap:8px;margin:0 0 10px}
+.cmd .input{flex:1;min-width:0;height:40px}
+.cmd .btn{height:40px}
