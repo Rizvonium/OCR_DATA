@@ -20,13 +20,19 @@ const place = (rel, id, role) => {
   fs.copyFileSync(path.join(dir, rel), out);
   return "/" + path.relative("public", out).replace(/\\/g, "/");
 };
+const withClean = (lines, id) => lines.map((l, i) => ({ ...l, chunks: l.chunks.map((c, j) => {
+  const { clean, ...rest } = c;
+  return clean ? { ...rest, clean_url: place(clean, `${id}:${i}:${j}`, "clean") } : rest;
+}) }));
 const rows = recs.map((r) => ({ id: r.id, dataset: r.dataset, font: r.font ?? null, image_url: place(r.image, r.id, "page"),
-  heat_url: r.heat ? place(r.heat, r.id, "heat") : null, width: r.width, height: r.height, lines: r.lines, source_ref: r.source_ref || {} }));
+  heat_url: r.heat ? place(r.heat, r.id, "heat") : null, width: r.width, height: r.height, lines: withClean(r.lines, r.id), source_ref: r.source_ref || {} }));
 if (args.includes("--starter")) {
   const f = path.join("data", "pages", "manifest.jsonl");
   fs.mkdirSync(path.dirname(f), { recursive: true });
-  const have = new Set(fs.existsSync(f) ? fs.readFileSync(f, "utf8").split("\n").filter(Boolean).map((l) => JSON.parse(l).id) : []);
-  fs.appendFileSync(f, rows.filter((r) => !have.has(r.id)).map((r) => JSON.stringify(r) + "\n").join(""));
+  // pages already in the file are replaced by the new version, others are added
+  const old = fs.existsSync(f) ? fs.readFileSync(f, "utf8").split("\n").filter(Boolean).map((l) => JSON.parse(l)) : [];
+  const ids = new Set(rows.map((r) => r.id));
+  fs.writeFileSync(f, [...old.filter((r) => !ids.has(r.id)), ...rows].map((r) => JSON.stringify(r) + "\n").join(""));
   console.log(`${rows.length} pages added to ${f}`);
 } else {
   const db = await open();

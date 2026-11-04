@@ -5,12 +5,15 @@
                                         [--font NAME | --font-map fonts.tsv]
 
 For every page image: the segmenter (kashmiri_segmenter.py) finds the lines and, inside each line,
-the chunks (pieces separated by the wider gaps between words); the Kashmiri word model reads every
-chunk. Writes
+the chunks: PAWs (each connected piece of a word with its own dots and vowel signs), in reading order,
+each remembering which word it belongs to (words = groups split at the wider gaps). Every chunk gets a
+cleaned crop that keeps only its own ink components: anything else touching its box (a neighbouring
+piece, a mark from another line) is erased. The Kashmiri word model reads the cleaned crop. Writes
   OUT_DIR/page/<id>.webp   the page
   OUT_DIR/heat/<id>.webp   the cleaned heat map (shadows and paper tone removed)
+  OUT_DIR/clean/<id>-L<line>-C<chunk>.webp   each chunk's cleaned crop
   OUT_DIR/pages.jsonl      one page per line: id, dataset, font, image, heat, width, height,
-                           lines: [{box, top: [[x,y]...], bottom: [[x,y]...], chunks: [{box, text}]}]
+                           lines: [{box, top, bottom, chunks: [{box, text, word, clean}]}]
 Typed text (.txt next to a page) is not needed: reviewers check and correct the model's reading.
 """
 import argparse, json, os, sys
@@ -18,7 +21,7 @@ import numpy as np
 from PIL import Image
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from kashmiri_segmenter import segment_page, word_box  # noqa: E402
+from kashmiri_segmenter import segment_page  # noqa: E402
 from make_samples import WordModel, slug  # noqa: E402
 
 IMG_EXT = (".png", ".jpg", ".jpeg", ".webp", ".tif", ".tiff")
@@ -53,7 +56,7 @@ def main():
             if "\t" in ln:
                 k, v = ln.rstrip("\n").split("\t", 1); fonts[os.path.splitext(k)[0]] = v.strip()
     model = WordModel(a.model)
-    for d in ("page", "heat"):
+    for d in ("page", "heat", "clean"):
         os.makedirs(os.path.join(a.out, d), exist_ok=True)
     n_pages = n_lines = n_chunks = 0
     with open(os.path.join(a.out, "pages.jsonl"), "w", encoding="utf-8") as out:
@@ -62,17 +65,24 @@ def main():
             pid = f"{slug(a.dataset)}-{slug(stem)}"
             rgb = Image.open(os.path.join(a.pages, fname)).convert("RGB")
             gray = np.asarray(rgb.convert("L"))
-            calib, lines, _ = segment_page(gray, tuple(a.col))
+            calib, lines, labels = segment_page(gray, tuple(a.col))
             margin = max(3, int(round(1.0 * calib["SW"])))
+            norm = calib["norm_page"]
             rec_lines = []
             for line in lines:
                 if not line["words"]:
                     continue
                 chunks = []
-                for w in line["words"]:
-                    x0, y0, x1, y1 = word_box(w)
-                    g = gray[max(0, y0 - margin):y1 + margin + 1, max(0, x0 - margin):x1 + margin + 1]
-                    chunks.append({"box": [x0, y0, x1, y1], "text": model.read(g)})
+                li = len(rec_lines)
+                for wi, w in enumerate(line["words"]):
+                    for part in w["parts"]:
+                        x0, y0, x1, y1 = [int(v) for v in part["box"]]
+                        ya, yb, xa, xb = max(0, y0 - margin), y1 + margin + 1, max(0, x0 - margin), x1 + margin + 1
+                        own = np.isin(labels[ya:yb, xa:xb], part["uids"])  # this piece's own ink only
+                        clean = np.where(own, np.minimum(norm[ya:yb, xa:xb], 200), 255).astype(np.uint8)
+                        name = f"clean/{pid}-L{li + 1:02d}-C{len(chunks) + 1:02d}.webp"
+                        Image.fromarray(clean).save(os.path.join(a.out, name), quality=85)
+                        chunks.append({"box": [x0, y0, x1, y1], "text": model.read(clean), "word": wi, "clean": name})
                 bs = np.array([c["box"] for c in chunks])
                 rec_lines.append({
                     "box": [int(bs[:, 0].min()), int(bs[:, 1].min()), int(bs[:, 2].max()), int(bs[:, 3].max())],

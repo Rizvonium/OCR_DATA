@@ -25,11 +25,14 @@ A page goes through three levels, top to bottom, always with the context on top 
 
 1. **Lines** — the page with the lines the segmenter found as numbered bands. *Are the lines correct?*
    If not: tap inside a band to split it, tap between two bands to join them (Zoom for precision).
-2. **Chunks of each line** — the page with that line in blue, and the line with its chunks (pieces split at
-   the wider gaps between words). *Nothing missing, every dot inside its box?* If not: ✂ split, ⊕ join,
-   ✕ remove a speck.
-3. **Text of each chunk** — the line with that chunk in blue, and the chunk large with the word model's
-   reading. *Does the text match exactly?* If not: type it on the Kashmiri keyboard. "The box is wrong"
+2. **Chunks of each line** — the page with that line in blue, and the line with its chunks. A chunk is a
+   PAW: one connected piece of a word with its own dots and vowel signs (ضرؤرژکنہٕ = ضر · ؤ · ر · ژ · کنہٕ).
+   Chunks of the same word share a colour (words = groups split at the wider gaps). *Nothing missing,
+   every dot inside its box?* If not: ✂ split, ⊕ join, ✕ remove a speck.
+3. **Text of each chunk** — the line with that chunk in blue, and the chunk three ways: **original**,
+   **heat map**, and **cleaned** (only the chunk's own ink components: anything else touching its box, a
+   neighbouring piece or a mark from another line, is erased), with the word model's reading of the
+   cleaned crop. *Does the text match exactly?* If not: type it on the Kashmiri keyboard. "The box is wrong"
    jumps back to fixing that line's chunks.
 
 Then the next chunk, line and page. **Heat map** shows the cleaned ink (shadow and paper removed) the
@@ -48,7 +51,7 @@ npm run import:pages -- out/pages --starter
 ```
 
 `--starter` adds them to `data/pages/manifest.jsonl`; the deployed app loads them on its next start.
-18 starter pages (3 in each of six fonts, 263 lines, 1,079 chunks) are included.
+18 starter pages (3 in each of six fonts, 263 lines, 2,696 chunks) are included.
 
 ## Run it on your computer
 

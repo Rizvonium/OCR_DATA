@@ -7,7 +7,7 @@ import { Check, Cross, Leaf } from "./icons";
 import { Keyboard } from "./Keyboard";
 
 type Box = [number, number, number, number];
-type Chunk = { box: Box; text: string };
+type Chunk = { box: Box; text: string; word?: number; clean_url?: string }; // a PAW, with the word it belongs to
 type Line = { box: Box; chunks: Chunk[] };
 type Page = { id: string; image_url: string; heat_url: string | null; width: number; height: number; lines: Line[] };
 type Ans = { level: string; line: number; chunk: number; verdict: string; edit: any; correction: string | null };
@@ -66,8 +66,8 @@ function LineView({ page, line, chunks, heat, sel, onTap }: { page: Page; line: 
           const [x0, y0, x1, y1] = c.box;
           return (
             <g key={i}>
-              <rect x={x0} y={y0} width={x1 - x0} height={y1 - y0} fill={i === sel ? "rgba(59,130,196,.25)" : BAND[i % 2]} stroke={i === sel ? "rgb(59,130,196)" : EDGE[i % 2]} strokeWidth={Math.max(1.5, vb[3] / 60)} />
-              <text x={(x0 + x1) / 2} y={y0 - m * 0.25} fontSize={Math.max(10, vb[3] * 0.16)} fill={EDGE[i % 2]} textAnchor="middle" fontWeight={700}>{i + 1}</text>
+              <rect x={x0} y={y0} width={x1 - x0} height={y1 - y0} fill={i === sel ? "rgba(59,130,196,.25)" : BAND[(c.word ?? i) % 2]} stroke={i === sel ? "rgb(59,130,196)" : EDGE[(c.word ?? i) % 2]} strokeWidth={Math.max(1.5, vb[3] / 60)} />
+              <text x={(x0 + x1) / 2} y={y0 - m * 0.25} fontSize={Math.max(9, vb[3] * 0.13)} fill={EDGE[(c.word ?? i) % 2]} textAnchor="middle" fontWeight={700}>{i + 1}</text>
             </g>
           );
         })}
@@ -76,15 +76,28 @@ function LineView({ page, line, chunks, heat, sel, onTap }: { page: Page; line: 
   );
 }
 
-function ChunkView({ page, box, heat }: { page: Page; box: Box; heat: boolean }) {
-  const m = Math.max(8, (box[3] - box[1]) * 0.3);
+function Crop({ page, box, href }: { page: Page; box: Box; href: string }) {
+  const m = Math.max(4, (box[3] - box[1]) * 0.12);
   const vb = [box[0] - m, box[1] - m, box[2] - box[0] + 2 * m, box[3] - box[1] + 2 * m];
   return (
-    <div className="stage">
-      <svg viewBox={vb.join(" ")} className="cv" preserveAspectRatio="xMidYMid meet">
-        <image href={heat && page.heat_url ? page.heat_url : page.image_url} width={page.width} height={page.height} />
-        <rect x={box[0]} y={box[1]} width={box[2] - box[0]} height={box[3] - box[1]} fill="none" stroke="rgba(192,80,42,.55)" strokeWidth={Math.max(1, vb[3] / 90)} strokeDasharray="4 3" />
-      </svg>
+    <svg viewBox={vb.join(" ")} preserveAspectRatio="xMidYMid meet">
+      <image href={href} width={page.width} height={page.height} />
+    </svg>
+  );
+}
+
+// The chunk three ways, as in the segmentation tool: the page as it is, the ink heat map, and the
+// cleaned crop that keeps only this piece's own ink (anything else touching its box is erased).
+function ChunkView({ page, chunk }: { page: Page; chunk: Chunk }) {
+  return (
+    <div className="stage triple">
+      <figure><Crop page={page} box={chunk.box} href={page.image_url} /><figcaption>Original</figcaption></figure>
+      {page.heat_url && <figure className="dark"><Crop page={page} box={chunk.box} href={page.heat_url} /><figcaption>Heat map</figcaption></figure>}
+      <figure>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        {chunk.clean_url ? <img src={chunk.clean_url} alt="Cleaned chunk" /> : <div className="noclean">only after re-cutting</div>}
+        <figcaption>Cleaned</figcaption>
+      </figure>
     </div>
   );
 }
@@ -213,13 +226,13 @@ export function PageReview() {
     if (tool === "split") {
       const sx = Math.round(x);
       if (sx - c.box[0] < 3 || c.box[2] - sx < 3) { setNote("Tap further inside the box, where it should be cut."); return; }
-      const right: Chunk = { box: [sx, c.box[1], c.box[2], c.box[3]], text: "" }, left: Chunk = { box: [c.box[0], c.box[1], sx, c.box[3]], text: "" };
+      const right: Chunk = { box: [sx, c.box[1], c.box[2], c.box[3]], text: "", word: c.word }, left: Chunk = { box: [c.box[0], c.box[1], sx, c.box[3]], text: "", word: c.word };
       setDChunks([...cs.slice(0, i), right, left, ...cs.slice(i + 1)]); setOps((o) => [...o, { op: "split", chunk: i, x: sx }]); setNote(`Cut box ${i + 1} in two.`); return;
     }
     if (sel === null) { setSel(i); setNote(`Box ${i + 1} chosen: now tap the box next to it.`); return; }
     if (Math.abs(sel - i) !== 1) { setSel(i); setNote("Join only boxes that are next to each other. Box chosen again; tap its neighbour."); return; }
     const [a, b] = sel < i ? [sel, i] : [i, sel];
-    const merged: Chunk = { box: union([cs[a].box, cs[b].box]), text: cs[a].text + cs[b].text };
+    const merged: Chunk = { box: union([cs[a].box, cs[b].box]), text: cs[a].text + cs[b].text, word: cs[a].word };
     setDChunks([...cs.slice(0, a), merged, ...cs.slice(b + 1)]); setOps((o) => [...o, { op: "join", chunks: [a, b] }]); setSel(null); setNote(`Joined boxes ${a + 1} and ${b + 1}.`);
   }
 
@@ -316,7 +329,7 @@ export function PageReview() {
               onTap={mode === "fix" ? tapChunks : undefined} />
             {mode === "ask" ? (
               <>
-                <p className="question">Is line {step.line + 1} cut into the right chunks? Each box should hold <b>one chunk</b> (a word): <b>nothing missing</b>, every dot and vowel sign <b>inside</b> its box, nothing from a neighbour.</p>
+                <p className="question">Is line {step.line + 1} cut into the right chunks? Each box should hold <b>one chunk</b>, a connected piece of a word (boxes of the same word share a colour): <b>nothing missing</b>, every dot and vowel sign <b>inside</b> its box.</p>
                 <div className="choices">
                   <button className="choice yes" disabled={busy} onClick={() => save("chunks", "correct", { line: step.line })}><Check /> Correct</button>
                   <button className="choice no" disabled={busy} onClick={startFix}><Cross /> Incorrect</button>
@@ -349,8 +362,8 @@ export function PageReview() {
             <>
               <div className="ctx-label">Line {step.line + 1} — chunk {step.chunk + 1} in blue</div>
               <LineView page={page} line={lines[step.line]} chunks={chunksOf(step.line)} heat={false} sel={step.chunk} />
-              <div className="ctx-label">Chunk {step.chunk + 1}</div>
-              <ChunkView page={page} box={c.box} heat={false} />
+              <div className="ctx-label">Chunk {step.chunk + 1}: original · heat map · cleaned (only its own ink)</div>
+              <ChunkView page={page} chunk={c} />
               <div className="typed">
                 <div className="label">Typed text</div>
                 <p className="text ks">{c.text || <span className="muted" style={{ fontSize: 16, fontFamily: "var(--ui)" }}>(nothing yet: please type it)</span>}</p>

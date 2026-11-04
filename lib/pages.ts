@@ -3,7 +3,7 @@ import { q } from "./db";
 import { checkCorrection, normalizeKs } from "./kashmiri";
 
 export type Box = [number, number, number, number];
-export type Chunk = { box: Box; text: string };
+export type Chunk = { box: Box; text: string; word?: number; clean_url?: string };
 export type Line = { box: Box; top?: number[][]; bottom?: number[][]; chunks: Chunk[] };
 export type PageAnswer = { level: string; line: number; chunk: number; verdict: string; edit: any; correction: string | null };
 
@@ -32,7 +32,11 @@ export async function nextPage(cid: string, wantId?: string | null) {
 const isBox = (b: unknown) => Array.isArray(b) && b.length === 4 && b.every((n) => Number.isFinite(n));
 const cleanChunks = (cs: unknown): Chunk[] | null =>
   Array.isArray(cs) && cs.length <= 200 && cs.every((c: any) => isBox(c?.box))
-    ? cs.map((c: any) => ({ box: c.box.map((n: number) => Math.round(n)) as Box, text: typeof c.text === "string" ? normalizeKs(c.text).slice(0, 160) : "" }))
+    ? cs.map((c: any) => ({
+        box: c.box.map((n: number) => Math.round(n)) as Box, text: typeof c.text === "string" ? normalizeKs(c.text).slice(0, 160) : "",
+        ...(Number.isInteger(c.word) ? { word: c.word } : {}),
+        ...(typeof c.clean_url === "string" && c.clean_url.startsWith("/pages/") ? { clean_url: c.clean_url } : {}),
+      }))
     : null;
 
 export type PageAnswerIn = { pageId: string; level: string; line?: number; chunk?: number; verdict: string; edit?: any; correction?: string; ms?: number };
