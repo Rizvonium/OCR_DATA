@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 import { api, useApp } from "@/components/AppState";
 import { Join } from "@/components/Join";
 
@@ -18,7 +19,7 @@ export default function Profile() {
         <div className="card stat"><div className="k">Rank</div><div className="v">{stats?.points ? `#${stats.rank}` : "—"}</div><div className="s">{stats?.ranked ? `of ${stats.ranked} people` : ""}</div></div>
         <div className="card stat"><div className="k">Today</div><div className="v">{stats?.today ?? 0}</div><div className="s">answered in the last 24 hours</div></div>
         <div className="card stat"><div className="k">Corrections typed</div><div className="v">{stats?.corrections ?? 0}</div><div className="s">fixes you wrote in Kashmiri</div></div>
-        <div className="card stat"><div className="k">Page photos added</div><div className="v">{stats?.photos ?? 0}</div><div className="s"><a href="/upload">add more</a></div></div>
+        <div className="card stat"><div className="k">Page photos added</div><div className="v">{stats?.photos ?? 0}</div><div className="s"><Link href="/upload">add more</Link></div></div>
       </div>
 
       <div className="card panel" style={{ maxWidth: 680 }}>

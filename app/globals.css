@@ -34,7 +34,9 @@
 }
 
 *{box-sizing:border-box}
-html,body{margin:0}
+html,body{margin:0;overscroll-behavior-y:none} /* no pull-to-refresh: a downward drag must not reload the page */
+button,a,svg,.mtile,.tile,.key,.choice{touch-action:manipulation;-webkit-tap-highlight-color:transparent} /* no double-tap zoom */
+@media (max-width:640px){input:not(.fix-input),textarea,select{font-size:16px!important}} /* iPhone zooms into smaller text boxes */
 body{min-height:100dvh;background:var(--page);color:var(--text);font:400 15px/1.5 var(--ui);-webkit-font-smoothing:antialiased;
   background-image:radial-gradient(1200px 420px at 50% -180px,var(--accent-soft),transparent 70%)}
 button,input,textarea{font:inherit;color:inherit}

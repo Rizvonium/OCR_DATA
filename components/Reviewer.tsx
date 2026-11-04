@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api, useApp, type Stats } from "./AppState";
 import { Check, Chevron, Cross, Leaf } from "./icons";
@@ -156,7 +157,7 @@ export function Reviewer() {
             <Leaf />
             <h2 style={{ marginTop: 12 }}>You have seen every picture for now.</h2>
             <p className="muted">Thank you! New pages are added regularly — come back soon, or see how you rank.</p>
-            <a className="btn primary" href="/leaderboard">See the leaderboard</a>
+            <Link className="btn primary" href="/leaderboard">See the leaderboard</Link>
           </div>
         ) : !cur ? (
           <div className="card empty"><p className="muted">{err || "Loading a picture…"}</p></div>

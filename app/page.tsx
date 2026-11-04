@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { GroupReview } from "@/components/GroupReview";
 import { MatchGame } from "@/components/MatchGame";
@@ -20,7 +21,7 @@ export default function Home() {
         </div>
       </div>
       {task === "label" ? <GroupReview /> : task === "match" ? <MatchGame /> : <PageReview />}
-      <p className="muted small" style={{ textAlign: "center", marginTop: 14 }}><a href="/words">Quick check of single words ›</a></p>
+      <p className="muted small" style={{ textAlign: "center", marginTop: 14 }}><Link href="/words">Quick check of single words ›</Link></p>
     </>
   );
 }

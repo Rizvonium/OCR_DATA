@@ -24,11 +24,16 @@ export function MatchGame() {
   const [err, setErr] = useState("");
   const [cheer, setCheer] = useState("");
   const shownAt = useRef(Date.now());
+  const skipSave = useRef(true);
+  const [saved, setSaved] = useState<"" | "saving" | "saved" | "error">("");
 
   const load = useCallback(async (exclude: string[] = []) => {
-    const r = await api<{ board: Board | null; left: number }>(`/api/match?exclude=${encodeURIComponent(exclude.join(","))}`);
+    const r = await api<{ board: Board | null; left: number; saved: { sets: string[][]; junk: string[] } | null }>(`/api/match?exclude=${encodeURIComponent(exclude.join(","))}`);
     setLeft(r.left); setBoard(r.board); setNone(!r.board);
-    setActions([]); setSel([]); setJunkMode(false); setErr(""); shownAt.current = Date.now();
+    // a board started before (e.g. before a reload) comes back with its pops and flags
+    const restored: Action[] = r.saved ? [...r.saved.sets.map((ids) => ({ type: "set" as const, ids })), ...r.saved.junk.map((id) => ({ type: "junk" as const, ids: [id] }))] : [];
+    skipSave.current = true; // loading a board is not a change to save
+    setActions(restored); setSel([]); setJunkMode(false); setErr(""); shownAt.current = Date.now();
     for (const t of r.board?.tiles || []) { const im = new Image(); im.src = t.clean_url; }
   }, []);
   useEffect(() => { load().catch((e) => setErr(e.message)); }, [load]);
@@ -57,12 +62,24 @@ export function MatchGame() {
   }
   const undo = () => { setActions((a) => a.slice(0, -1)); setSel([]); };
 
+  // every pop, flag and undo is saved at once (as unfinished), so nothing is lost if the page reloads
+  useEffect(() => {
+    if (!board) return;
+    if (skipSave.current) { skipSave.current = false; return; }
+    setSaved("saving");
+    const t = setTimeout(() => {
+      api("/api/match/answer", { method: "POST", json: { boardId: board.id, sets, junk, done: false, ms: Date.now() - shownAt.current } })
+        .then(() => setSaved("saved")).catch(() => setSaved("error"));
+    }, 250);
+    return () => clearTimeout(t);
+  }, [actions]); // eslint-disable-line react-hooks/exhaustive-deps
+
   async function submit() {
     if (!board) return;
     setBusy(true); setErr("");
     try {
-      const r = await api<{ stats: Stats }>("/api/match/answer", { method: "POST", json: { boardId: board.id, sets, junk, ms: Date.now() - shownAt.current } });
-      setStats(r.stats);
+      const r = await api<{ stats: Stats }>("/api/match/answer", { method: "POST", json: { boardId: board.id, sets, junk, done: true, ms: Date.now() - shownAt.current } });
+      setStats(r.stats); setSaved("");
       await load([board.id]);
     } catch (e: any) { setErr(e.message); } finally { setBusy(false); }
   }
@@ -121,7 +138,9 @@ export function MatchGame() {
             {cleared ? "🎉 Board cleared — Submit ›" : done ? `Submit ${sets.length} set${sets.length === 1 ? "" : "s"}${junk.length ? ` + ${junk.length} not a chunk` : ""} ›` : "Skip this board ›"}
           </button>
         </div>
-        <p className="muted small" style={{ textAlign: "center", margin: "0 0 14px" }}>Unsorted tiles stay as they are · 1 point per set and per flag</p>
+        <p className="muted small" style={{ textAlign: "center", margin: "0 0 14px" }}>
+          {saved === "saving" ? "Saving…" : saved === "saved" ? "✓ Saved — safe to leave and come back" : saved === "error" ? "⚠ Not saved: no connection. Your next pop will try again." : "Unsorted tiles stay as they are · 1 point per set and per flag"}
+        </p>
         {err && <p className="err" style={{ padding: "0 22px 16px" }}>{err}</p>}
       </article>
     </div>

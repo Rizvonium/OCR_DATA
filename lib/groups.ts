@@ -3,8 +3,12 @@ import { q } from "./db";
 import { checkCorrection, normalizeKs } from "./kashmiri";
 
 /** Next group for this person: largest groups first, fewest answers first. */
-export async function nextGroup(cid: string, exclude: string[] = []) {
-  const [g] = await q<any>(
+export async function nextGroup(cid: string, exclude: string[] = [], wantId?: string | null) {
+  // the group this person had open (e.g. before a reload), if they have not answered it yet
+  const [want] = wantId ? await q<any>(
+    `select id, members, proposed_text, size from chunk_groups g where id = $2
+       and not exists (select 1 from group_answers a where a.group_id = g.id and a.contributor_id = $1)`, [cid, wantId]) : [];
+  const [g] = want ? [want] : await q<any>(
     `select id, members, proposed_text, size from chunk_groups g
      where not exists (select 1 from group_answers a where a.group_id = g.id and a.contributor_id = $1)
        and not (id = any($2::text[]))

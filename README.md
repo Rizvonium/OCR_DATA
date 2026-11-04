@@ -98,6 +98,16 @@ python3 segmentation/make_boards.py data/match/manifest.jsonl data/pages/manifes
 `--starter` adds them to `data/pages/manifest.jsonl`; the deployed app loads them on its next start.
 30 starter pages (5 in each of six fonts, 442 lines, 4,514 chunks) are included, with their groups.
 
+## Nothing is lost on a phone
+
+- Pull-to-refresh and double-tap zoom are off in the app; text boxes are 16 px so iPhones do not zoom in.
+- Every save is retried up to 3 times on a dropped connection or a passing server error (saves are
+  upserts, so a retry never stores anything twice); if it still fails, the screen says so.
+- **Match** saves after every pop, flag and undo; a board left half-way (or reloaded) comes back as it was.
+- **Label** and **Segmentation** reopen the same group / page after a reload; unsaved split, join and
+  remove edits are kept on the phone until saved.
+- The browser asks before leaving when photos are picked but not uploaded, or marks are not yet saved.
+
 ## Run it on your computer
 
 ```bash

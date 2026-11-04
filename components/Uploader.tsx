@@ -1,6 +1,7 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "./AppState";
+import { useLeaveWarning } from "./useLeaveWarning";
 
 // Photos of Kashmiri pages. Each photo is shrunk in the browser (long side 2400 px, JPEG), checked for
 // blur and darkness, and uploaded one by one.
@@ -84,6 +85,7 @@ export function Uploader() {
   }
 
   const ready = items.filter((x) => x.state === "ready").length;
+  useLeaveWarning(ready > 0 || busy); // photos picked but not uploaded cannot survive a reload
   return (
     <div className="uploader">
       <h1>Add photos of Kashmiri pages</h1>

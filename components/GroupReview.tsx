@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { api, useApp, type Stats } from "./AppState";
 import { Check, Cross, Leaf } from "./icons";
 import { Keyboard } from "./Keyboard";
+import { useLeaveWarning } from "./useLeaveWarning";
 
 type Member = { chunk: string; clean_url: string; text: string };
 type Group = { id: string; members: Member[]; proposed_text: string; size: number };
@@ -35,14 +36,18 @@ export function GroupReview() {
   }, []);
 
   const fetchNext = useCallback(async (exclude: string[] = []) => {
-    const r = await api<{ group: Group | null; left: number }>(`/api/group?exclude=${encodeURIComponent(exclude.join(","))}`);
+    // reopen the group that was on screen before a reload; otherwise the next one
+    let want = ""; try { want = exclude.length ? "" : localStorage.getItem("ks_group") || ""; } catch {}
+    const r = await api<{ group: Group | null; left: number }>(`/api/group?exclude=${encodeURIComponent(exclude.join(","))}${want ? `&id=${encodeURIComponent(want)}` : ""}`);
     setLeft(r.left);
+    try { if (r.group) localStorage.setItem("ks_group", r.group.id); else localStorage.removeItem("ks_group"); } catch {}
     for (const m of r.group?.members || []) { const im = new Image(); im.src = m.clean_url; }
     return r.group;
   }, []);
   useEffect(() => { fetchNext().then((g) => { setGroup(g); setNone(!g); open(g); }).catch((e) => setErr(e.message)); }, [fetchNext, open]);
 
   const same = cur ? cur.members.filter((m) => !odd.has(m.chunk)) : [];
+  useLeaveWarning((phase === "mark" && odd.size > 0) || (phase === "fix" && !!text.trim()) || busy);
 
   async function save(verdict: "correct" | "incorrect" | "skip" | "not_chunk", correction?: string) {
     if (!cur) return;

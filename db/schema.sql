@@ -202,6 +202,8 @@ create table if not exists match_answers (
 create index if not exists match_answers_by_contributor on match_answers (contributor_id, created_at desc);
 -- tiles flagged "not a chunk" (only a mark or a speck, not a proper piece of a word)
 alter table match_answers add column if not exists junk jsonb not null default '[]'::jsonb;
+-- false while the board is being played (saved after every pop, flag and undo), true once submitted
+alter table match_answers add column if not exists done boolean not null default true;
 
 -- Supabase exposes the public schema through its REST API to anyone holding the publishable key.
 -- Row level security with no policies closes that door; the app's server connects as the

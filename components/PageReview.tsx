@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 // Segmentation check: the page with its lines -> each line with its chunks (-> each chunk's text, only
 // with withText; normally text is labelled by look-alike groups in GroupReview).
 // Every decision is saved at once (POST /api/page/answer); Back goes to any earlier step to change it.
@@ -6,6 +7,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api, useApp, type Stats } from "./AppState";
 import { Check, Cross, Leaf } from "./icons";
 import { Keyboard } from "./Keyboard";
+import { useLeaveWarning } from "./useLeaveWarning";
 
 type Box = [number, number, number, number];
 type Chunk = { box: Box; text: string; word?: number; clean_url?: string }; // a PAW, with the word it belongs to
@@ -15,6 +17,11 @@ type Ans = { level: string; line: number; chunk: number; verdict: string; edit: 
 type Step = { kind: "lines" } | { kind: "chunks"; line: number } | { kind: "text"; line: number; chunk: number } | { kind: "done" };
 
 const key = (level: string, line = -1, chunk = -1) => `${level}:${line}:${chunk}`;
+const draftKey = (pageId: string, s: Step) => `ks_draft:${pageId}:${s.kind}:${"line" in s ? s.line : -1}`;
+function readDraft(pageId: string, s: Step): { lines?: Line[]; chunks?: Chunk[]; ops?: any[] } | null {
+  try { const v = localStorage.getItem(draftKey(pageId, s)); return v ? JSON.parse(v) : null; } catch { return null; }
+}
+function dropDraft(pageId: string, s: Step) { try { localStorage.removeItem(draftKey(pageId, s)); } catch {} }
 const union = (bs: Box[]): Box => [Math.min(...bs.map((b) => b[0])), Math.min(...bs.map((b) => b[1])), Math.max(...bs.map((b) => b[2])), Math.max(...bs.map((b) => b[3]))];
 const rtl = (cs: Chunk[]) => [...cs].sort((a, b) => b.box[2] - a.box[2]);
 const BAND = ["rgba(192,80,42,.20)", "rgba(47,122,74,.20)"];
@@ -150,8 +157,12 @@ export function PageReview({ withText = false }: { withText?: boolean }) {
 
   const load = useCallback(async () => {
     setErr(""); setMode("ask");
-    const r = await api<{ page: Page | null; answers?: Ans[] }>("/api/page");
-    if (!r.page) { setNone(true); setPage(null); return; }
+    // reopen the page that was on screen before a reload (unless it was just finished)
+    let want = ""; try { want = localStorage.getItem("ks_page") || ""; } catch {}
+    const r = await api<{ page: Page | null; answers?: Ans[] }>(`/api/page${want ? `?id=${encodeURIComponent(want)}` : ""}`);
+    if (!r.page) { setNone(true); setPage(null); try { localStorage.removeItem("ks_page"); } catch {} return; }
+    if ((r.answers || []).some((a) => a.level === "page")) { try { localStorage.removeItem("ks_page"); } catch {} return load(); }
+    try { localStorage.setItem("ks_page", r.page.id); } catch {}
     const m: Record<string, Ans> = {};
     for (const a of r.answers || []) m[key(a.level, a.line, a.chunk)] = a;
     setPage(r.page); setAns(m); setIdx(-1); // resume position is found below, once steps exist
@@ -166,11 +177,26 @@ export function PageReview({ withText = false }: { withText?: boolean }) {
   const fixOnArrive = useRef(false); // set by "The box is wrong": open the chunk tools on arrival
   useEffect(() => {
     shownAt.current = Date.now(); setSel(null); setErr("");
+    const draft = page && step ? readDraft(page.id, step) : null;
     if (fixOnArrive.current && step?.kind === "chunks") {
       fixOnArrive.current = false;
       setDChunks(chunksOf(step.line)); setOps([]); setTool("split"); setNote("Fix the boxes of this line, then save."); setMode("fix");
+    } else if (draft && step?.kind === "lines" && draft.lines) {
+      setDLines(draft.lines); setOps(draft.ops || []); setNote("Your unsaved changes were restored."); setMode("fix");
+    } else if (draft && step?.kind === "chunks" && draft.chunks) {
+      setDChunks(draft.chunks); setOps(draft.ops || []); setTool("split"); setNote("Your unsaved changes were restored."); setMode("fix");
     } else setMode("ask");
   }, [idx, page]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // edits in progress (split / join / remove) are kept on the phone until saved, so a reload loses nothing
+  useEffect(() => {
+    if (!page || !step || mode !== "fix" || (step.kind !== "lines" && step.kind !== "chunks")) return;
+    try {
+      localStorage.setItem(draftKey(page.id, step), JSON.stringify(step.kind === "lines" ? { lines: dLines, ops } : { chunks: dChunks, ops }));
+    } catch {}
+  }, [mode, dLines, dChunks, ops]); // eslint-disable-line react-hooks/exhaustive-deps
+  useLeaveWarning(busy); // a save in flight
+  const cancelFix = () => { if (page && step) dropDraft(page.id, step); setMode("ask"); }
 
   const stepKey = (s: Step) => s.kind === "lines" ? key("lines") : s.kind === "chunks" ? key("chunks", s.line) : s.kind === "text" ? key("text", s.line, s.chunk) : key("page");
   const prev = step ? ans[stepKey(step)] : undefined;
@@ -192,6 +218,7 @@ export function PageReview({ withText = false }: { withText?: boolean }) {
         return n;
       });
       setMode("ask");
+      if (step) dropDraft(page.id, step);
       if (level !== "page") setIdx((i) => i + 1);
     } catch (e: any) { setErr(e.message); } finally { setBusy(false); }
   }
@@ -307,7 +334,7 @@ export function PageReview({ withText = false }: { withText?: boolean }) {
   // ---------------- screens
   if (none) return (
     <div className="card empty"><Leaf /><h2 style={{ marginTop: 12 }}>You have reviewed every page for now.</h2>
-      <p className="muted">Thank you! New pages are added regularly.</p><a className="btn" href="/words">Check single words instead</a></div>
+      <p className="muted">Thank you! New pages are added regularly.</p><Link className="btn" href="/words">Check single words instead</Link></div>
   );
   if (!page || !step) return <div className="card empty"><p className="muted">{err || "Loading a page…"}</p></div>;
 
@@ -359,7 +386,7 @@ export function PageReview({ withText = false }: { withText?: boolean }) {
                 <div className="fix-actions">
                   <button className="btn primary" disabled={busy} onClick={() => save("lines", "incorrect", { edit: { lines: dLines, ops } })}>Save {dLines.length} lines</button>
                   <button className="btn" onClick={() => { setDLines(lines.map((l) => ({ box: l.box, chunks: l.chunks }))); setOps([]); setNote("Started over."); }}>Start over</button>
-                  <button className="btn ghost" style={{ flex: "none", minWidth: 0 }} onClick={() => setMode("ask")}>Cancel</button>
+                  <button className="btn ghost" style={{ flex: "none", minWidth: 0 }} onClick={cancelFix}>Cancel</button>
                 </div>
               </div>
             )}
@@ -399,7 +426,7 @@ export function PageReview({ withText = false }: { withText?: boolean }) {
                 <div className="fix-actions">
                   <button className="btn primary" disabled={busy || !dChunks.length} onClick={() => save("chunks", "incorrect", { line: step.line, edit: { chunks: dChunks, ops } })}>Save {dChunks.length} chunks</button>
                   <button className="btn" onClick={() => { setDChunks(chunksOf(step.line)); setOps([]); setSel(null); setNote("Started over."); }}>Start over</button>
-                  <button className="btn ghost" style={{ flex: "none", minWidth: 0 }} onClick={() => setMode("ask")}>Cancel</button>
+                  <button className="btn ghost" style={{ flex: "none", minWidth: 0 }} onClick={cancelFix}>Cancel</button>
                 </div>
               </div>
             )}
@@ -446,7 +473,7 @@ export function PageReview({ withText = false }: { withText?: boolean }) {
                   <div className="fix-actions" style={{ marginTop: 14 }}>
                     <button className="btn primary" disabled={busy || !text.trim()} onClick={() => save("text", "incorrect", { ...meta, correction: text })}>Save text</button>
                     <button className="btn" disabled={busy} onClick={() => save("text", "incorrect", meta)}>Wrong, but I can&apos;t type it</button>
-                    <button className="btn ghost" style={{ flex: "none", minWidth: 0 }} onClick={() => setMode("ask")}>Cancel</button>
+                    <button className="btn ghost" style={{ flex: "none", minWidth: 0 }} onClick={cancelFix}>Cancel</button>
                   </div>
                 </div>
               )}
@@ -461,7 +488,7 @@ export function PageReview({ withText = false }: { withText?: boolean }) {
             <h2 style={{ marginTop: 10 }}>Page finished — thank you!</h2>
             <p className="muted">{nLines} lines, {lines.reduce((n, _, i) => n + chunksOf(i).length, 0)} chunks checked. You have <b>{stats?.points ?? 0}</b> points.</p>
             {stats?.badges?.length ? <p className="badges">{stats.badges.map((b) => <span key={b.id} className="badge" title={b.why}>{b.icon} {b.name}</span>)}</p> : null}
-            <button className="btn primary" disabled={busy} onClick={async () => { await save("page", "done"); await load(); }}>Next page ›</button>
+            <button className="btn primary" disabled={busy} onClick={async () => { await save("page", "done"); try { localStorage.removeItem("ks_page"); } catch {} await load(); }}>Next page ›</button>
           </div>
         )}
         {err && <p className="err" style={{ padding: "0 22px 16px" }}>{err}</p>}

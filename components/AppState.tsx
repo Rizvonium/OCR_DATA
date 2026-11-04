@@ -29,13 +29,25 @@ export function AppState({ children }: { children: React.ReactNode }) {
 }
 export const useApp = () => useContext(C);
 
+// Every call is retried up to 3 times when the network drops or the server has a passing problem
+// (5xx), so a bad mobile connection does not lose an answer. Saves are upserts, so a retry never
+// stores anything twice.
 export async function api<T = any>(url: string, init?: RequestInit & { json?: unknown }): Promise<T> {
-  const r = await fetch(url, {
-    ...init, cache: "no-store",
+  const req = {
+    ...init, cache: "no-store" as RequestCache,
     headers: { ...(init?.json !== undefined ? { "content-type": "application/json" } : {}), ...(init?.headers || {}) },
     body: init?.json !== undefined ? JSON.stringify(init.json) : init?.body,
-  });
-  const data = await r.json().catch(() => ({}));
-  if (!r.ok) throw Object.assign(new Error(data.error || `HTTP ${r.status}`), { status: r.status });
-  return data;
+  };
+  let last: any;
+  for (let attempt = 0; attempt < 4; attempt++) {
+    if (attempt) await new Promise((r) => setTimeout(r, 700 * 2 ** (attempt - 1)));
+    let r: Response;
+    try { r = await fetch(url, req); } catch (e) { last = Object.assign(new Error("No connection. Retrying…"), { status: 0 }); continue; }
+    const data = await r.json().catch(() => ({}));
+    if (r.ok) return data;
+    last = Object.assign(new Error(data.error || `HTTP ${r.status}`), { status: r.status });
+    if (r.status < 500) break; // a real answer from the server (e.g. a check failed): do not retry
+  }
+  if (last?.status === 0) last.message = "No connection — your answer was not saved. Check the network and try again.";
+  throw last;
 }

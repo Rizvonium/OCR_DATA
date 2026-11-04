@@ -26,8 +26,9 @@ export async function POST(req: Request) {
   junk.forEach((x: string) => used.add(x));
   const rest = [...ids].filter((x) => !used.has(x));
   await q(
-    `insert into match_answers (board_id, contributor_id, sets, rest, junk, ms_spent) values ($1, $2, ($3::text)::jsonb, ($4::text)::jsonb, ($5::text)::jsonb, $6)
-     on conflict (board_id, contributor_id) do update set sets = excluded.sets, rest = excluded.rest, junk = excluded.junk, updated_at = now()`,
-    [b.boardId, me.id, JSON.stringify(sets), JSON.stringify(rest), JSON.stringify(junk), Math.min(Number(b.ms) || 0, 3_600_000)]);
+    `insert into match_answers (board_id, contributor_id, sets, rest, junk, ms_spent, done) values ($1, $2, ($3::text)::jsonb, ($4::text)::jsonb, ($5::text)::jsonb, $6, $7)
+     on conflict (board_id, contributor_id) do update set sets = excluded.sets, rest = excluded.rest, junk = excluded.junk,
+       ms_spent = greatest(match_answers.ms_spent, excluded.ms_spent), done = excluded.done, updated_at = now()`,
+    [b.boardId, me.id, JSON.stringify(sets), JSON.stringify(rest), JSON.stringify(junk), Math.min(Number(b.ms) || 0, 3_600_000), b.done !== false]);
   return json({ ok: true, sets: sets.length, stats: await myStats(me.id) });
 }
