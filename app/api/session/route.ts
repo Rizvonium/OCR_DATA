@@ -1,4 +1,4 @@
-import { isPreview, q } from "@/lib/db";
+import { databaseSource, isPreview, q } from "@/lib/db";
 import { body, fail, json } from "@/lib/http";
 import { COOKIE, cleanHandle, clientIpHash, currentContributor, newCode, newKey, setKeyCookie, sha256 } from "@/lib/identity";
 import { myStats } from "@/lib/review";
@@ -9,8 +9,10 @@ const SIGNUPS_PER_NETWORK_PER_DAY = Number(process.env.SIGNUPS_PER_NETWORK_PER_D
 
 export async function GET() {
   const me = await currentContributor();
-  if (!me) return json({ me: null, preview: isPreview() });
-  return json({ me, stats: await myStats(me.id), preview: isPreview() });
+  // `database` names the variable the connection came from (never its value), to check the setup
+  const database = databaseSource();
+  if (!me) return json({ me: null, preview: isPreview(), database });
+  return json({ me, stats: await myStats(me.id), preview: isPreview(), database });
 }
 
 // Join: pick a display name -> your own contributor id, public code and secret key.

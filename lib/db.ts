@@ -15,8 +15,18 @@ const g = globalThis as unknown as { __ksdb?: Promise<Query> };
 // DATABASE_URL (set by hand, or by Vercel's Neon storage) or POSTGRES_URL (Vercel's Supabase/Neon
 // integrations). Extra URL options those integrations add (sslmode, pgbouncer, supa...) are removed:
 // the driver below sets SSL itself and some of them are not valid Postgres settings.
+// Any other variable holding a postgres:// address is used too (Vercel's storage integrations name them
+// after the chosen prefix, e.g. STORAGE_URL), preferring pooled connections.
+export function databaseSource(): string | null {
+  for (const k of ["DATABASE_URL", "POSTGRES_URL", "STORAGE_URL"]) if (process.env[k]) return k;
+  const found = Object.keys(process.env)
+    .filter((k) => /^postgres(ql)?:\/\//.test(process.env[k] || ""))
+    .sort((a, b) => Number(/UNPOOLED|NON_POOLING|DIRECT/.test(a)) - Number(/UNPOOLED|NON_POOLING|DIRECT/.test(b)) || a.length - b.length);
+  return found[0] ?? null;
+}
 export function databaseUrl(): string | null {
-  const raw = process.env.DATABASE_URL || process.env.POSTGRES_URL;
+  const k = databaseSource();
+  const raw = k ? process.env[k] : undefined;
   if (!raw) return null;
   try { const u = new URL(raw); u.search = ""; return u.toString(); } catch { return raw; }
 }
