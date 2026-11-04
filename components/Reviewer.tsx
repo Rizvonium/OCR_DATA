@@ -7,6 +7,9 @@ import { Keyboard } from "./Keyboard";
 type Task = { id: string; kind: string; image_url: string; context_url: string | null; proposed_text: string; ticket: string };
 type Gold = { pass: boolean | null; verdict: string; text: string } | null;
 type Toast = { kind: "good" | "bad" | "info"; text: string; ks?: string } | null;
+// one answered picture of this run, so the reviewer can go back to it and change the answer
+type Hist = { task: Task; verdict: "correct" | "incorrect" | "skip"; correction?: string; badCrop: boolean; locked: boolean };
+const VERDICT_TEXT = { correct: "✓ Correct", incorrect: "✗ Incorrect", skip: "Skipped" };
 const SESSION_GOAL = 20;
 const KIND_LABEL: Record<string, string> = { word: "Word", paw: "Part of a word", line: "Whole line" };
 
@@ -23,6 +26,10 @@ export function Reviewer() {
   const [toast, setToast] = useState<Toast>(null);
   const [session, setSession] = useState(0);
   const [plus, setPlus] = useState(0);
+  const [history, setHistory] = useState<Hist[]>([]);
+  const [pos, setPos] = useState<number | null>(null); // index in history while going back; null = the new picture
+  const past = pos === null ? null : history[pos];
+  const cur = past ? past.task : task;
   const input = useRef<HTMLInputElement>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
 
@@ -53,13 +60,31 @@ export function Reviewer() {
   }, [next, fetchTask]);
 
   const answer = useCallback(async (verdict: "correct" | "incorrect" | "skip", correction?: string) => {
-    if (!task || busy) return;
+    if (busy) return;
+    if (past && pos !== null) {
+      // changing an earlier answer
+      if (past.locked) return;
+      setBusy(true); setErr("");
+      try {
+        const r = await api<{ stats: Stats }>("/api/answer", {
+          method: "PATCH", json: { sampleId: past.task.id, ticket: past.task.ticket, verdict, correction, badCrop: verdict === "incorrect" && badCrop },
+        });
+        setStats(r.stats);
+        setHistory((h) => h.map((x, i) => (i === pos ? { ...x, verdict, correction, badCrop: verdict === "incorrect" && badCrop } : x)));
+        show({ kind: "info", text: "Answer changed." }, 1600);
+        setMode("ask"); setText(""); setBadCrop(false);
+        setPos(pos + 1 < history.length ? pos + 1 : null);
+      } catch (e: any) { setErr(e.message); } finally { setBusy(false); }
+      return;
+    }
+    if (!task) return;
     setBusy(true); setErr("");
     try {
       const r = await api<{ gold: Gold; stats: Stats }>("/api/answer", {
         method: "POST", json: { sampleId: task.id, ticket: task.ticket, verdict, correction, badCrop: verdict === "incorrect" && badCrop },
       });
       setStats(r.stats);
+      setHistory((h) => [...h, { task, verdict, correction, badCrop: verdict === "incorrect" && badCrop, locked: !!r.gold }]);
       if (verdict !== "skip") { setSession((s) => s + 1); setPlus((p) => p + 1); }
       if (r.gold && r.gold.pass === true) show({ kind: "good", text: "Spot on — that one was a check item with a known answer." });
       else if (r.gold && r.gold.pass === false)
@@ -70,11 +95,14 @@ export function Reviewer() {
     } catch (e: any) {
       if (e.status === 409) await advance(task); else setErr(e.message);
     } finally { setBusy(false); }
-  }, [task, busy, badCrop, advance, setStats]);
+  }, [task, busy, badCrop, advance, setStats, past, pos, history.length]);
+
+  const goBack = () => { setMode("ask"); setErr(""); setPos((p) => (p === null ? history.length - 1 : Math.max(0, p - 1))); };
+  const goNext = () => { setMode("ask"); setErr(""); setPos((p) => (p === null || p + 1 >= history.length ? null : p + 1)); };
 
   const openFix = () => {
-    if (!task) return;
-    setMode("fix"); setText(task.proposed_text);
+    if (!cur || past?.locked) return;
+    setMode("fix"); setText(past?.correction || cur.proposed_text); setBadCrop(past?.badCrop ?? false);
     setTimeout(() => { input.current?.focus(); input.current?.select(); }, 30);
   };
 
@@ -116,52 +144,62 @@ export function Reviewer() {
   return (
     <div className="review">
       <div className="status-line">
+        <button className="btn ghost navbtn" onClick={goBack} disabled={busy || history.length === 0 || pos === 0} aria-label="Previous picture">‹ Back</button>
         <span><b>{session}</b> of {goal}</span>
         <span className="bar-mini"><i style={{ width: `${pct}%` }} /></span>
         <span><b>{stats?.points ?? 0}</b> points{stats?.points ? ` · #${stats.rank}` : ""}</span>
+        <button className="btn ghost navbtn" onClick={goNext} disabled={busy || pos === null} aria-label="Next picture">Next ›</button>
       </div>
       <div>
-        {done ? (
+        {done && !past ? (
           <div className="card empty">
             <Leaf />
             <h2 style={{ marginTop: 12 }}>You have seen every picture for now.</h2>
             <p className="muted">Thank you! New pages are added regularly — come back soon, or see how you rank.</p>
             <a className="btn primary" href="/leaderboard">See the leaderboard</a>
           </div>
-        ) : !task ? (
+        ) : !cur ? (
           <div className="card empty"><p className="muted">{err || "Loading a picture…"}</p></div>
         ) : (
-          <article className="card task swap-enter" key={task.id}>
+          <article className="card task swap-enter" key={cur.id}>
+            {past && (
+              <div className={`past-note ${past.locked ? "locked" : ""}`}>
+                Picture {pos! + 1} of {history.length} you answered: <b>{VERDICT_TEXT[past.verdict]}</b>
+                {past.correction && <> → <span className="ks">{past.correction}</span></>}
+                {past.locked ? " · a check item, so it cannot be changed." : " · choose again to change it."}
+              </div>
+            )}
             <div className="task-head">
-              <span className="tag">{KIND_LABEL[task.kind] ?? task.kind}</span>
+              <span className="tag">{KIND_LABEL[cur.kind] ?? cur.kind}</span>
               <span>Look closely at every dot and vowel sign</span>
             </div>
-            {plus > 0 && <span className="plus" key={plus}>+1</span>}
+            {plus > 0 && !past && <span className="plus" key={plus}>+1</span>}
             <div className="stage">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={task.image_url} alt="Segmented Kashmiri text to check" />
-              <a className="zoom" href={task.image_url} target="_blank" rel="noreferrer">open full size</a>
+              <img src={cur.image_url} alt="Segmented Kashmiri text to check" />
+              <a className="zoom" href={cur.image_url} target="_blank" rel="noreferrer">open full size</a>
             </div>
-            {task.context_url && (
+            {cur.context_url && (
               <details className="ctx">
                 <summary><Chevron /> Show the line this was cut from</summary>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <div className="ctx-img"><img src={task.context_url} alt="The line the picture was cut from, with its box marked" loading="lazy" /></div>
+                <div className="ctx-img"><img src={cur.context_url} alt="The line the picture was cut from, with its box marked" loading="lazy" /></div>
               </details>
             )}
             <div className="typed">
               <div className="label">Typed text</div>
-              <p className="text ks">{task.proposed_text}</p>
+              <p className="text ks">{cur.proposed_text}</p>
             </div>
             {mode === "ask" ? (
               <>
                 <p className="question">Does the typed text match the picture exactly — every letter and vowel sign?</p>
                 <div className="choices">
-                  <button className="choice yes" onClick={() => answer("correct")} disabled={busy}><Check /> Correct <kbd>C</kbd></button>
-                  <button className="choice no" onClick={openFix} disabled={busy}><Cross /> Incorrect <kbd>X</kbd></button>
+                  <button className="choice yes" onClick={() => answer("correct")} disabled={busy || past?.locked} aria-pressed={past?.verdict === "correct"}><Check /> Correct <kbd>C</kbd></button>
+                  <button className="choice no" onClick={openFix} disabled={busy || past?.locked} aria-pressed={past?.verdict === "incorrect"}><Cross /> Incorrect <kbd>X</kbd></button>
                 </div>
                 <div className="skip">
-                  <button className="btn ghost" onClick={() => answer("skip")} disabled={busy}>Can&apos;t tell — skip</button>
+                  {past ? <button className="btn ghost" onClick={goNext}>{pos! + 1 < history.length ? "Keep it, next ›" : "Keep it, back to new pictures ›"}</button>
+                    : <button className="btn ghost" onClick={() => answer("skip")} disabled={busy}>Can&apos;t tell — skip</button>}
                 </div>
               </>
             ) : (
@@ -173,7 +211,7 @@ export function Reviewer() {
                 <Keyboard onKey={insert} />
                 <label className="check" style={{ marginTop: 16 }}>
                   <input type="checkbox" checked={badCrop} onChange={(e) => setBadCrop(e.target.checked)} />
-                  <span>The box itself is wrong — it cuts letters off, or holds more or less than one {task.kind === "line" ? "line" : "word"}.</span>
+                  <span>The box itself is wrong — it cuts letters off, or holds more or less than one {cur.kind === "line" ? "line" : "word"}.</span>
                 </label>
                 <div className="fix-actions">
                   <button className="btn primary" onClick={() => answer("incorrect", text)} disabled={busy || !text.trim()}>Submit correction <kbd style={{ background: "transparent", color: "inherit" }}>Enter</kbd></button>

@@ -52,6 +52,9 @@ create table if not exists sessions (
   created_at     timestamptz not null default now()
 );
 create index if not exists sessions_by_contributor on sessions (contributor_id);
+-- 'session' = signed in now; 'device' = this browser is remembered ("Continue as ..." without a PIN,
+-- also after signing out, until the person chooses "Not me" on it)
+alter table sessions add column if not exists kind text not null default 'session';
 
 create index if not exists samples_queue on samples (is_gold, review_count);
 create index if not exists samples_font on samples (font);
@@ -191,7 +194,7 @@ select f.code, f.handle, f.reviews, f.corrections, f.confirmed_corrections, f.go
        round((f.reviews + 3 * f.confirmed_corrections) * f.trust * 1.5)::int                        as points,
        f.last_answer_at, f.created_at
 from contributor_flags f
-where f.status = 'active' and cardinality(f.flags) = 0 and f.reviews > 0;
+where f.status <> 'blocked';  -- everyone who registered, except people the admin blocked
 
 -- What the crowd decided about each sample. Votes are weighted by each person's trust;
 -- flagged people count 1/5, blocked people not at all.

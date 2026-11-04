@@ -3,7 +3,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useApp } from "./AppState";
-import { Leaf, Lock, Moon, Sun } from "./icons";
+import { Leaf, Moon, Sun } from "./icons";
 
 const LINKS = [["/", "Review"], ["/upload", "Photos", "Add photos"], ["/leaderboard", "Board", "Leaderboard"], ["/guide", "Guide", "How to judge"], ["/me", "Me", "Profile"]];
 
@@ -32,20 +32,19 @@ export function TopBar() {
           <Leaf />
           <div><b>Kashmiri OCR Data</b><span className="ks">کٲشُر</span></div>
         </Link>
-        <nav className="nav">
+        {me && <nav className="nav">
           {LINKS.map(([href, label, long]) => (
             <Link key={href} href={href} aria-current={path === href ? "page" : undefined}>
               {long ? <><span className="long">{long}</span><span className="short">{label}</span></> : label}
             </Link>
           ))}
-        </nav>
+        </nav>}
         <div className="top-right">
           {me && stats && (
             <Link href="/me" className="chip hide-sm" style={{ textDecoration: "none", color: "inherit" }} title="Your points and rank">
               <span className="dot" />{stats.points ?? 0} pts{stats.points ? ` · #${stats.rank}` : ""}
             </Link>
           )}
-          <Link href="/admin" className="iconbtn" aria-label="Admin" title="Admin (project admin only)"><Lock /></Link>
           <button className="iconbtn" onClick={toggle} aria-label={dark ? "Light theme" : "Dark theme"}>{dark ? <Sun /> : <Moon />}</button>
         </div>
       </div>

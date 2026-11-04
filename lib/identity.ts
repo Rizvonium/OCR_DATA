@@ -23,7 +23,7 @@ export async function currentContributor(): Promise<Me | null> {
   const h = sha256(key);
   const rows = await q<Me>(
     `update contributors set last_seen_at = now()
-     where id = (select contributor_id from sessions where token_hash = $1) or token_hash = $1
+     where id = (select contributor_id from sessions where token_hash = $1 and kind = 'session') or token_hash = $1
      returning id, code, handle, status, email, created_at`, [h]);
   return rows[0] ?? null;
 }
@@ -38,6 +38,18 @@ export async function clientIpHash(): Promise<string> {
   const h = await headers();
   const ip = (h.get("x-forwarded-for") || h.get("x-real-ip") || "local").split(",")[0].trim();
   return sha256((process.env.IP_SALT || "ks-ocr-data") + ip).slice(0, 32);
+}
+
+/** Names that differ only in capitals, spaces, dots, dashes or underscores count as the same person. */
+export const nameKey = (h: string) => h.normalize("NFC").toLowerCase().replace(/[\s._-]+/g, "");
+const NAME_KEY_SQL = "regexp_replace(handle_key, '[[:space:]._-]+', '', 'g')";
+
+/** The profile already registered under this name (or one that counts as the same), if any. */
+export async function findByName(handle: string) {
+  const [u] = await q<any>(
+    `select id, code, handle, status, pin_hash, failed_pins, locked_until > now() as locked
+     from contributors where ${NAME_KEY_SQL} = $1 order by created_at limit 1`, [nameKey(handle)]);
+  return u ?? null;
 }
 
 export function cleanHandle(raw: unknown): string | null {
@@ -97,9 +109,38 @@ export function checkPin(pin: string, stored: string | null): boolean {
   return a.length === b.length && crypto.timingSafeEqual(a, b);
 }
 
-/** Starts a signed-in session in this browser. */
-export async function startSession(contributorId: string) {
+/** Starts a signed-in session in this browser, and remembers the browser (device pass) unless asked not to. */
+export async function startSession(contributorId: string, rememberDevice = true) {
   const key = newKey();
-  await q("insert into sessions (token_hash, contributor_id) values ($1, $2)", [sha256(key), contributorId]);
+  await q("insert into sessions (token_hash, contributor_id, kind) values ($1, $2, 'session')", [sha256(key), contributorId]);
   await setKeyCookie(key);
+  if (rememberDevice) {
+    const jar = await cookies();
+    const old = jar.get(DEVICE_COOKIE)?.value;
+    if (old) await q("delete from sessions where token_hash = $1 and kind = 'device'", [sha256(old)]);
+    const dev = newKey();
+    await q("insert into sessions (token_hash, contributor_id, kind) values ($1, $2, 'device')", [sha256(dev), contributorId]);
+    jar.set(DEVICE_COOKIE, dev, { httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production", path: "/", maxAge: 60 * 60 * 24 * 400 });
+  }
+}
+
+// ---------------------------------------------------------------- remembered browser
+export const DEVICE_COOKIE = "ks_device";
+
+/** The person this browser remembers (device pass), if any. */
+export async function rememberedContributor(): Promise<{ id: string; handle: string; status: string } | null> {
+  const dev = (await cookies()).get(DEVICE_COOKIE)?.value;
+  if (!dev) return null;
+  const [u] = await q<any>(
+    `select c.id, c.handle, c.status from sessions s join contributors c on c.id = s.contributor_id
+     where s.token_hash = $1 and s.kind = 'device'`, [sha256(dev)]);
+  return u ?? null;
+}
+
+/** Forget this browser: no more "Continue as ..." here. */
+export async function forgetDevice() {
+  const jar = await cookies();
+  const dev = jar.get(DEVICE_COOKIE)?.value;
+  if (dev) await q("delete from sessions where token_hash = $1 and kind = 'device'", [sha256(dev)]);
+  jar.delete(DEVICE_COOKIE);
 }

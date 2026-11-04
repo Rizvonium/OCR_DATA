@@ -7,7 +7,7 @@ export async function GET(req: Request) {
   const period = new URL(req.url).searchParams.get("period");
   const rows = await q(
     `select code, handle, points, reviews::int, confirmed_corrections::int, check_accuracy::int, agreement::int, last_answer_at
-     from leaderboard order by points desc, reviews desc, created_at limit 100`);
+     from leaderboard order by points desc nulls last, reviews desc, created_at limit 2000`);
   // weekly view: same trust rules, only this week's reviews
   if (period === "week") {
     const week = await q<{ code: string; n: number }>(

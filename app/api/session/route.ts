@@ -1,8 +1,9 @@
 import { databaseSource, isPreview, q } from "@/lib/db";
 import { body, fail, json } from "@/lib/http";
 import {
-  COOKIE, PIN_RE, checkPin, cleanHandle, clientIpHash, currentContributor, hashPin, newCode, newKey, sha256, startSession,
+  COOKIE, PIN_RE, checkPin, cleanHandle, clientIpHash, currentContributor, findByName, hashPin, nameKey, newCode, newKey, sha256, startSession,
 } from "@/lib/identity";
+import { rememberedContributor } from "@/lib/identity";
 import { myStats } from "@/lib/review";
 import { cookies } from "next/headers";
 
@@ -15,21 +16,28 @@ export async function GET() {
   const me = await currentContributor();
   // `database` names the variable the connection came from (never its value), to check the setup
   const database = databaseSource();
-  if (!me) return json({ me: null, preview: isPreview(), database });
+  if (!me) {
+    const r = await rememberedContributor();
+    return json({ me: null, remembered: r && r.status !== "blocked" ? { handle: r.handle } : null, preview: isPreview(), database });
+  }
   return json({ me, stats: await myStats(me.id), preview: isPreview(), database });
 }
 
-// Username + PIN. An unknown name creates a profile; a known name signs in with its PIN.
+// mode "create": a new profile; refused when the name (or one that counts as the same) is registered.
+// mode "signin": an existing profile with its PIN. (No mode: sign in if the name exists, else create.)
 export async function POST(req: Request) {
   const b = await body(req);
+  const mode: "create" | "signin" | "auto" = b.mode === "create" || b.mode === "signin" ? b.mode : "auto";
   const handle = cleanHandle(b.handle);
   if (!handle) return fail("Choose a username of 2–24 letters or numbers.");
   const pin = typeof b.pin === "string" ? b.pin.trim() : "";
   if (!PIN_RE.test(pin)) return fail("The PIN is 4 to 6 digits.");
+  const user = await findByName(handle);
 
-  const [user] = await q<any>(
-    "select id, code, handle, status, pin_hash, failed_pins, locked_until > now() as locked from contributors where handle_key = $1",
-    [handle.toLowerCase()]);
+  if (mode === "create" && user)
+    return fail(`The name “${user.handle}” is already registered. If it is yours, sign in instead; otherwise choose another name.`, 409);
+  if (mode === "signin" && !user)
+    return fail("No profile has this username. Check the spelling, or create a new profile.", 404);
 
   if (user) {
     if (user.locked) return fail(`Too many wrong PINs. Try again in ${LOCK_MINUTES} minutes.`, 429);
@@ -44,14 +52,14 @@ export async function POST(req: Request) {
                  locked_until = case when failed_pins + 1 >= $2 then now() + ($3::text || ' minutes')::interval else locked_until end,
                  failed_pins = case when failed_pins + 1 >= $2 then 0 else failed_pins + 1 end
                where id = $1`, [user.id, MAX_WRONG_PINS, String(LOCK_MINUTES)]);
-      return fail("That username is taken and the PIN does not match. If it is not you, choose another username.", 401);
+      return fail(mode === "signin" ? "Wrong PIN for this username." : "That username is taken and the PIN does not match. If it is not you, choose another username.", 401);
     }
     await q("update contributors set failed_pins = 0, locked_until = null where id = $1", [user.id]);
     await startSession(user.id);
     return json({ me: { id: user.id, code: user.code, handle: user.handle, status: user.status }, created: false });
   }
 
-  if (!b.consent) return fail("New username: please tick the box to agree to how your answers will be used.", 400);
+  if (!b.consent) return fail("Please tick the box to agree to how your answers will be used.", 400);
   const ipHash = await clientIpHash();
   const [{ n }] = await q<{ n: number }>(
     "select count(*)::int as n from contributors where ip_hash = $1 and created_at > now() - interval '1 day'", [ipHash]);
@@ -61,7 +69,7 @@ export async function POST(req: Request) {
       const [me] = await q(
         `insert into contributors (code, handle, handle_key, token_hash, pin_hash, ip_hash)
          values ($1, $2, $3, $4, $5, $6) returning id, code, handle, status, created_at`,
-        [newCode(), handle, handle.toLowerCase(), sha256(newKey()), hashPin(pin), ipHash]);
+        [newCode(), handle, nameKey(handle), sha256(newKey()), hashPin(pin), ipHash]);
       await startSession(me.id);
       return json({ me, created: true });
     } catch (e: any) {
@@ -77,7 +85,7 @@ export async function POST(req: Request) {
 export async function DELETE() {
   const jar = await cookies();
   const key = jar.get(COOKIE)?.value;
-  if (key) await q("delete from sessions where token_hash = $1", [sha256(key)]);
+  if (key) await q("delete from sessions where token_hash = $1 and kind = 'session'", [sha256(key)]);
   jar.delete(COOKIE);
   return json({ ok: true });
 }

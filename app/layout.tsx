@@ -7,6 +7,7 @@ import "@fontsource/newsreader/500.css";
 import "@fontsource/noto-naskh-arabic/arabic-400.css";
 import "./globals.css";
 import { AppState } from "@/components/AppState";
+import { Gate } from "@/components/Gate";
 import { TopBar } from "@/components/TopBar";
 
 export const metadata: Metadata = {
@@ -25,7 +26,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body>
         <AppState>
           <TopBar />
-          <main>{children}</main>
+          <main><Gate>{children}</Gate></main>
         </AppState>
       </body>
     </html>

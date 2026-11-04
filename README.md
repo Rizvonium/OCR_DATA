@@ -137,12 +137,18 @@ images) upload them to Supabase Storage instead: also set `SUPABASE_URL` and `SU
 
 ## Who is who: username + PIN
 
-- One form: **username** and a **4–6 digit PIN**. A new username creates a profile (after a consent
-  tick); an existing one signs in with its PIN, on any phone or computer. No email, no password.
-- Usernames are unique (case does not matter), so each person is identified by their username;
-  exports also carry a short code like `KS-7F3K2Q` that never changes.
-- The PIN is stored only as a salted scrypt hash. Five wrong PINs lock that username for 15 minutes.
-- A forgotten PIN cannot be recovered; the person picks a new username (an admin can see both in `/admin`).
+- The app opens on the sign-in screen; everything else appears after signing in. A small **Admin**
+  link under the form leads to the admin sign-in.
+- **Create a profile**: a username (checked live: names that differ only in capitals, spaces, dots,
+  dashes or underscores count as the same, so "Zoon Dar" blocks "zoondar"), a 4–6 digit PIN typed twice,
+  and consent. **Sign in**: username + PIN, on any device.
+- **Remembered browsers**: signing in keeps the browser signed in for 400 days, and also gives it a
+  device pass. After signing out, the screen offers **Continue as <name>** with one tap, no PIN.
+  "Not <name>?" removes the pass (for shared phones). A PIN reset by the admin removes all passes.
+- PINs are stored only as salted scrypt hashes. Five wrong PINs lock that username for 15 minutes.
+- Everyone who registers is on the leaderboard, except people the admin blocks.
+- While reviewing, **‹ Back** and **Next ›** move through the pictures answered in this run; an earlier
+  answer can be changed. Check items cannot be changed once answered (their answer has been shown).
 
 ## Spam and quality checks
 

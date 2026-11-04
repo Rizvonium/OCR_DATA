@@ -121,3 +121,30 @@ export async function myStats(cid: string) {
      from contributor_flags f left join leaderboard l on l.code = f.code where f.id = $1`, [cid]);
   return s ?? null;
 }
+
+/** Change one's own earlier answer (going back within a run). Check items cannot be changed once
+ *  answered, because their right answer has been shown. The time spent stays the first one. */
+export async function updateAnswer(cid: string, a: AnswerIn): Promise<{ ok: true } | { ok: false; status: number; error: string }> {
+  if (!["correct", "incorrect", "skip"].includes(a.verdict)) return { ok: false, status: 400, error: "Unknown answer." };
+  const age = readTicket(cid, a.sampleId, a.ticket);
+  if (age === null || age > 24 * 3600 * 1000) return { ok: false, status: 400, error: "This answer can no longer be changed." };
+  const [row] = await q<any>(
+    `select a.id, a.verdict, a.is_gold, s.proposed_text from answers a join samples s on s.id = a.sample_id
+     where a.sample_id = $1 and a.contributor_id = $2`, [a.sampleId, cid]);
+  if (!row) return { ok: false, status: 404, error: "You have not answered this picture yet." };
+  if (row.is_gold) return { ok: false, status: 409, error: "This was a check item; its answer cannot be changed." };
+  let verdict = a.verdict;
+  let correction: string | null = null;
+  const badCrop = verdict === "incorrect" && !!a.badCrop;
+  if (verdict === "incorrect" && a.correction && a.correction.trim()) {
+    correction = normalizeKs(a.correction);
+    const err = checkCorrection(correction);
+    if (err) return { ok: false, status: 400, error: err };
+    if (sameText(correction, row.proposed_text)) { correction = null; if (!badCrop) verdict = "correct"; }
+  }
+  await q("update answers set verdict = $2, correction = $3, bad_crop = $4 where id = $1", [row.id, verdict, correction, badCrop]);
+  // keep the per-picture review count right when an answer moves to or from "skip"
+  const delta = (row.verdict === "skip" ? 0 : 1) - (verdict === "skip" ? 0 : 1);
+  if (delta) await q("update samples set review_count = greatest(0, review_count - $2) where id = $1", [a.sampleId, delta]);
+  return { ok: true };
+}
