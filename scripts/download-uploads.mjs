@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Download uploaded page photos for segmentation.
-//   SITE=https://kasdata.vercel.app ADMIN_KEY=... npm run uploads:download -- OUT_DIR [--status kept] [--mark-used]
+//   SITE=https://kasdata.vercel.app ADMIN_PASSWORD=... npm run uploads:download -- OUT_DIR [--status kept] [--mark-used]
 // Writes OUT_DIR/<id>.jpg and OUT_DIR/uploads.jsonl (uploader, source, page, quality). --mark-used sets
 // the downloaded photos to "used" so they are not fetched twice. Then, for photos without typed text:
 //   python3 segmentation/make_samples.py OUT_DIR out/photos --dataset photos --no-text
@@ -11,8 +11,8 @@ const args = process.argv.slice(2);
 const out = args.find((a, i) => !a.startsWith("--") && !args[i - 1]?.startsWith("--"));
 const opt = (n, d) => { const i = args.indexOf(`--${n}`); return i >= 0 ? args[i + 1] : d; };
 const site = (process.env.SITE || "https://kasdata.vercel.app").replace(/\/$/, "");
-const key = process.env.ADMIN_KEY;
-if (!out || !key) { console.error("usage: SITE=... ADMIN_KEY=... npm run uploads:download -- OUT_DIR [--status kept] [--mark-used]"); process.exit(1); }
+const key = process.env.ADMIN_PASSWORD || process.env.ADMIN_KEY;
+if (!out || !key) { console.error("usage: SITE=... ADMIN_PASSWORD=... npm run uploads:download -- OUT_DIR [--status kept] [--mark-used]"); process.exit(1); }
 const status = opt("status", "kept");
 const H = { "x-admin-key": key };
 const list = await (await fetch(`${site}/api/admin?view=uploads&status=${status}`, { headers: H })).json();

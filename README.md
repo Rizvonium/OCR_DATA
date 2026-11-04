@@ -13,7 +13,7 @@ combined into a clean dataset for training Kashmiri OCR.
 | **Leaderboard** | points, reviews, this week / all time, and the progress of the whole dataset. |
 | **Add photos** | photograph Kashmiri pages; they are checked for blur and later cut into words. |
 | **Profile** | your stats; sign out on this device. |
-| **Admin** (🔒 button, `/admin`) | sign in with `ADMIN_KEY` (stays signed in 30 days). Tabs: **People** (name, code, joined, last seen, reviews, points, check items, agreement, speed, photos, devices, flags; block, **reset PIN**), **Answers** (every picture with every person's answer, or one person's), **Photos** (keep / reject uploads), **Data & export** (CSV / JSONL, data per font). PINs are stored one-way and cannot be shown, only reset. |
+| **Admin** (🔒 button, `/admin`) | one admin, signed in with username + password (stays signed in 30 days). Tabs: **People** (name, code, joined, last seen, reviews, points, check items, agreement, speed, photos, devices, flags; block, **reset PIN**), **Answers** (every picture with every person's answer, or one person's), **Photos** (keep / reject uploads), **Data & export** (CSV / JSONL, data per font). PINs are stored one-way and cannot be shown, only reset. |
 
 Reviewers are never told the font, the dataset or which pictures are check items: none of it is sent
 to the browser, and picture file names are hashes.
@@ -111,12 +111,16 @@ this app does not use it — the server talks to Postgres directly):
    pictures yet, loads the demo set. (To do it by hand instead: paste `db/schema.sql` into Supabase →
    SQL Editor → Run, or `DATABASE_URL=... npm run db:setup`. `SEED_DEMO=0` skips the demo set.)
 
+There is one admin, username `Admin@890`. The code holds only a slow one-way hash (scrypt) of the
+admin password, never the password. Because this repository is public, set your own `ADMIN_USER` and
+`ADMIN_PASSWORD` in Vercel when you can; they take priority over the built-in ones.
+
 Then in Vercel → Project → Settings → Environment Variables add:
 
 | Variable | Value |
 |---|---|
 | `DATABASE_URL` | the connection string from step 1 |
-| `ADMIN_KEY` | any long random text; you type it on `/admin` |
+| `ADMIN_USER`, `ADMIN_PASSWORD` | optional: replace the built-in admin username and password (recommended, the repository is public) |
 
 Then **Redeploy** (Vercel → Deployments → ⋯ → Redeploy) so the new variables are used. Never paste
 these into the code or a chat; keep them only in Vercel (and in a local `.env` that git ignores).
@@ -159,7 +163,7 @@ everyone's answers. Open either in Google Sheets (File → Import). For a copy t
 put this in cell A1 of an empty, private sheet (it contains your admin key):
 
 ```text
-=IMPORTDATA("https://kasdata.vercel.app/api/export?key=YOUR_ADMIN_KEY&format=csv&view=answers")
+=IMPORTDATA("https://kasdata.vercel.app/api/export?key=YOUR_ADMIN_PASSWORD&format=csv&view=answers")
 ```
 
 ### Page photos from contributors
@@ -175,7 +179,7 @@ In `/admin` → **Uploaded page photos**: open, **Keep** or **Reject**. Then tur
 review pictures:
 
 ```bash
-SITE=https://kasdata.vercel.app ADMIN_KEY=... npm run uploads:download -- photos/ --mark-used
+SITE=https://kasdata.vercel.app ADMIN_PASSWORD=... npm run uploads:download -- photos/ --mark-used
 ```
 ```bash
 python3 segmentation/make_samples.py photos/ out/photos --dataset photos --no-text

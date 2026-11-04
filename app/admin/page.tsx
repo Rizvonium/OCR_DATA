@@ -1,7 +1,7 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
 
-// Admin area: sign in with ADMIN_KEY (kept as an httpOnly cookie for 30 days), then four tabs.
+// Admin area: sign in with the admin username + password (kept as an httpOnly cookie for 30 days), then four tabs.
 const get = (url: string) => fetch(url, { cache: "no-store" }).then((r) => r.json());
 const post = (body: unknown) => fetch("/api/admin", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) }).then((r) => r.json());
 const day = (s?: string | null) => (s ? new Date(s).toLocaleString(undefined, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : "—");
@@ -10,7 +10,8 @@ type Tab = "people" | "answers" | "photos" | "data";
 
 export default function Admin() {
   const [state, setState] = useState<"loading" | "out" | "in">("loading");
-  const [key, setKey] = useState("");
+  const [user, setUser] = useState("");
+  const [password, setPassword] = useState("");
   const [err, setErr] = useState("");
   const [tab, setTab] = useState<Tab>("people");
   const [who, setWho] = useState<string | null>(null);
@@ -18,8 +19,8 @@ export default function Admin() {
 
   async function signIn(e: React.FormEvent) {
     e.preventDefault(); setErr("");
-    const r = await fetch("/api/admin/login", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ key }) });
-    if (r.ok) { setKey(""); setState("in"); } else setErr((await r.json()).error);
+    const r = await fetch("/api/admin/login", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ user, password }) });
+    if (r.ok) { setPassword(""); setState("in"); } else setErr((await r.json()).error);
   }
   async function signOut() { await fetch("/api/admin/login", { method: "DELETE" }); setState("out"); }
 
@@ -27,10 +28,12 @@ export default function Admin() {
   if (state === "out") return (
     <form onSubmit={signIn} className="card panel admin-login">
       <h2>🔒 Admin sign-in</h2>
-      <p className="muted small">Only for the project admin. Use the <code>ADMIN_KEY</code> set in Vercel → Settings → Environment Variables.</p>
-      <div className="field"><label htmlFor="ak">Admin key</label>
-        <input id="ak" type="password" className="input" value={key} onChange={(e) => setKey(e.target.value)} autoComplete="current-password" autoFocus /></div>
-      <button className="btn primary" style={{ width: "100%" }} disabled={!key}>Sign in as admin</button>
+      <p className="muted small">Only for the project admin.</p>
+      <div className="field"><label htmlFor="au">Admin username</label>
+        <input id="au" className="input" value={user} onChange={(e) => setUser(e.target.value)} autoComplete="username" autoFocus /></div>
+      <div className="field"><label htmlFor="ap">Password</label>
+        <input id="ap" type="password" className="input" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" /></div>
+      <button className="btn primary" style={{ width: "100%" }} disabled={!user || !password}>Sign in as admin</button>
       {err && <p className="err">{err}</p>}
     </form>
   );
@@ -202,7 +205,7 @@ function Data() {
           <a className="btn" href={ex("status=all")}>Everything with every answer (JSONL)</a>
         </div>
         <p className="small muted" style={{ marginBottom: 0 }}>Live copy in Google Sheets (cell A1 of a private sheet):{" "}
-          <code style={{ userSelect: "all", wordBreak: "break-all" }}>{`=IMPORTDATA("${typeof window !== "undefined" ? location.origin : ""}/api/export?key=YOUR_ADMIN_KEY&format=csv&view=answers")`}</code></p>
+          <code style={{ userSelect: "all", wordBreak: "break-all" }}>{`=IMPORTDATA("${typeof window !== "undefined" ? location.origin : ""}/api/export?key=YOUR_ADMIN_PASSWORD&format=csv&view=answers")`}</code></p>
         <div style={{ marginTop: 12 }}><button className="btn ghost" onClick={async () => { const r = await post({ action: "promote_gold", limit: 50 }); setMsg(r.error || `${r.promoted} pictures became check items.`); load(); }}>Make 50 unanimous pictures into check items ({d.gold} now)</button> {msg && <span className="small">{msg}</span>}</div>
       </div>
       <h2>Data per font</h2>

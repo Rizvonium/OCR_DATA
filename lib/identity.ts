@@ -48,26 +48,40 @@ export function cleanHandle(raw: unknown): string | null {
   return h;
 }
 
-// Admin: the ADMIN_KEY itself (header x-admin-key or ?key=, for scripts and Google Sheets), or the
-// admin cookie set by signing in on /admin. The cookie holds a hash derived from the key, never the key,
-// and stops working as soon as ADMIN_KEY is changed.
+// ---------------------------------------------------------------- the one admin
+// Username + password. ADMIN_USER / ADMIN_PASSWORD set in Vercel take priority; otherwise the built-in
+// username and a slow one-way hash (scrypt) of the built-in password are used. The password itself is
+// not in the code. The same password (or ADMIN_KEY, if set) also works as ?key= / x-admin-key for
+// scripts and Google Sheets. Signing in sets an httpOnly cookie holding a hash derived from the secret.
 export const ADMIN_COOKIE = "ks_admin";
-export const adminToken = (key: string) => sha256("ks-admin-session:" + key);
+const BUILTIN_ADMIN_USER = "Admin@890";
+const BUILTIN_ADMIN_HASH = "scrypt:65536:7c3f38835a5b52a3af922fb95a97d4d4:ee1ce8896c2e25fd3aeefbd4ed31ff182940d8c8f9216c4804342e6f5eccfee4";
 const same = (a: string, b: string) => crypto.timingSafeEqual(Buffer.from(sha256(a)), Buffer.from(sha256(b)));
 
-export function adminKeyMatches(got: string): boolean {
-  const want = process.env.ADMIN_KEY;
-  if (!want) return process.env.NODE_ENV !== "production"; // open locally, locked in production
-  return same(got, want);
+function scryptMatches(password: string, stored: string): boolean {
+  const [, n, salt, hex] = stored.split(":");
+  const got = crypto.scryptSync(password, salt, 32, { N: Number(n), r: 8, p: 1, maxmem: 256 * 1024 * 1024 });
+  return crypto.timingSafeEqual(got, Buffer.from(hex, "hex"));
 }
+export const adminUser = () => process.env.ADMIN_USER || BUILTIN_ADMIN_USER;
+// what the admin cookie is derived from; changing the password (or ADMIN_KEY) signs the admin out
+const adminSecret = () => process.env.ADMIN_PASSWORD || process.env.ADMIN_KEY || BUILTIN_ADMIN_HASH;
+export const adminToken = () => sha256("ks-admin-session:" + adminSecret());
+
+/** The admin password (or ADMIN_KEY when set). */
+export function adminPasswordMatches(got: string): boolean {
+  if (!got) return false;
+  if (process.env.ADMIN_KEY && same(got, process.env.ADMIN_KEY)) return true;
+  if (process.env.ADMIN_PASSWORD) return same(got, process.env.ADMIN_PASSWORD);
+  return scryptMatches(got, BUILTIN_ADMIN_HASH);
+}
+export const adminLoginMatches = (user: string, password: string) => same(user.trim(), adminUser()) && adminPasswordMatches(password);
 
 export function isAdmin(req: Request): boolean {
-  const want = process.env.ADMIN_KEY;
-  if (!want) return process.env.NODE_ENV !== "production";
-  const got = req.headers.get("x-admin-key") || new URL(req.url).searchParams.get("key") || "";
-  if (got && same(got, want)) return true;
   const cookie = (req.headers.get("cookie") || "").split(/;\s*/).find((c) => c.startsWith(ADMIN_COOKIE + "="));
-  return !!cookie && same(decodeURIComponent(cookie.slice(ADMIN_COOKIE.length + 1)), adminToken(want));
+  if (cookie && same(decodeURIComponent(cookie.slice(ADMIN_COOKIE.length + 1)), adminToken())) return true;
+  const got = req.headers.get("x-admin-key") || new URL(req.url).searchParams.get("key") || "";
+  return !!got && adminPasswordMatches(got);
 }
 
 // ---------------------------------------------------------------- PIN

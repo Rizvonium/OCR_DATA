@@ -5,9 +5,9 @@ import { isAdmin } from "@/lib/identity";
 export const dynamic = "force-dynamic";
 
 // Reviewed data, for training or for looking at in a spreadsheet.
-//   /api/export?key=ADMIN_KEY&status=verified,corrected            one JSON line per picture (JSONL)
-//   /api/export?key=ADMIN_KEY&format=csv                           one row per picture (CSV)
-//   /api/export?key=ADMIN_KEY&format=csv&view=answers              one row per answer: who, what, right or wrong
+//   /api/export?key=ADMIN_PASSWORD&status=verified,corrected            one JSON line per picture (JSONL)
+//   /api/export?key=ADMIN_PASSWORD&format=csv                           one row per picture (CSV)
+//   /api/export?key=ADMIN_PASSWORD&format=csv&view=answers              one row per answer: who, what, right or wrong
 // In Google Sheets: =IMPORTDATA("https://<site>/api/export?key=...&format=csv&view=answers") keeps a live copy.
 // &status=all includes every picture; &dataset=NAME limits to one dataset.
 

@@ -4,7 +4,7 @@ import { currentContributor, isAdmin } from "@/lib/identity";
 
 export const dynamic = "force-dynamic";
 
-// The photo (or ?size=thumb), for its uploader and for the admin (?key=ADMIN_KEY).
+// The photo (or ?size=thumb), for its uploader and for the admin (signed in as admin, or ?key=ADMIN_PASSWORD).
 export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }) {
   const id = Number((await ctx.params).id);
   if (!Number.isInteger(id)) return fail("Not found.", 404);

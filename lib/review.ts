@@ -1,9 +1,12 @@
 // Serving pictures to review and recording answers.
 import crypto from "node:crypto";
-import { q } from "./db";
+import { databaseUrl, q } from "./db";
 import { checkCorrection, normalizeKs, sameText } from "./kashmiri";
 
-const SECRET = process.env.TASK_SECRET || process.env.ADMIN_KEY || "ks-ocr-data-dev-secret";
+// Secret for signing tickets: never a value from this (public) code. Falls back to a hash of the
+// database address, which only the server knows.
+const SECRET = process.env.TASK_SECRET || process.env.ADMIN_KEY || process.env.ADMIN_PASSWORD
+  || crypto.createHash("sha256").update("ks-ticket:" + (databaseUrl() || process.env.PGLITE_DIR || process.cwd())).digest("hex");
 const GOLD_SHARE = Number(process.env.GOLD_SHARE || 0.12); // ~1 in 8 items is a check item
 const PER_MINUTE = Number(process.env.MAX_ANSWERS_PER_MINUTE || 30);
 
