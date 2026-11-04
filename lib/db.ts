@@ -5,6 +5,7 @@
 // Both run db/schema.sql, so the SQL is identical everywhere. On first start the tables are created
 // if missing, and the demo pictures are loaded if there are no pictures at all, so a fresh deploy
 // works without any manual step.
+import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 
@@ -42,9 +43,14 @@ async function connect(): Promise<Query> {
     // prepare:false is required by Supabase's transaction pooler (port 6543), the right choice for serverless.
     const sql = postgres(url, { prepare: false, max: Number(process.env.DB_POOL_SIZE || 3), idle_timeout: 20, ssl: /localhost|127\.0\.0\.1/.test(url) ? false : "require", onnotice: () => {} });
     query = (async (text, params = []) => (await sql.unsafe(text, params as any[])) as any) as Query;
-    const [{ ok }] = await query<{ ok: boolean }>(
-      "select to_regclass('public.sample_consensus') is not null and exists (select 1 from information_schema.columns where table_name = 'samples' and column_name = 'font') as ok");
-    if (!ok || process.env.AUTO_MIGRATE === "1") await sql.unsafe(schema);
+    // run the schema when it is new or changed (its hash is kept in app_meta)
+    const hash = crypto.createHash("sha256").update(schema).digest("hex");
+    const [{ has }] = await query<{ has: boolean }>("select to_regclass('public.app_meta') is not null as has");
+    const v = has ? (await query<{ v: string }>("select v from app_meta where k = 'schema'"))[0]?.v ?? null : null;
+    if (v !== hash || process.env.AUTO_MIGRATE === "1") {
+      await sql.unsafe(schema);
+      await query("insert into app_meta (k, v) values ('schema', $1) on conflict (k) do update set v = excluded.v", [hash]);
+    }
   } else {
     const { PGlite } = await import("@electric-sql/pglite");
     const dir = process.env.PGLITE_DIR || (process.env.VERCEL ? "/tmp/pglite" : file(".data/pglite"));

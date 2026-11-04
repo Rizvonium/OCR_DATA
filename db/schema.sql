@@ -1,10 +1,13 @@
 -- Kashmiri OCR Data: review app schema. Plain Postgres; safe to run more than once.
+-- The app runs this file itself when it changes (it keeps the file's hash in app_meta); the lock
+-- stops two servers starting at the same moment from changing the schema at the same time.
+select pg_advisory_xact_lock(727274);
+create table if not exists app_meta (k text primary key, v text);
 -- Supabase: paste into SQL Editor and run, or `npm run db:setup` with DATABASE_URL set.
 -- Locally (no DATABASE_URL) the app runs the same file in an embedded Postgres (PGlite).
 
--- People who review. Nobody needs a Supabase Auth account: the app issues every person their own
--- contributor row, a public code (KS-XXXXXX, shown on the leaderboard and in the dataset credits)
--- and a secret key (kept in their browser; only its SHA-256 hash is stored here).
+-- People who review. Each person is a username + PIN; the app gives them a row here and a public
+-- code (KS-XXXXXX, used in exports). The PIN is stored only as a salted scrypt hash.
 create table if not exists contributors (
   id            uuid primary key default gen_random_uuid(),
   code          text not null unique,
@@ -38,6 +41,18 @@ create table if not exists samples (
 -- typeface of the printed text (Gulmarg Nastaleeq, Noto Nastaliq, Naskh...). Used only for statistics:
 -- it is never sent to reviewers, who judge every picture the same way whatever the font.
 alter table samples add column if not exists font text;
+alter table contributors add column if not exists pin_hash text;
+alter table contributors add column if not exists failed_pins int not null default 0;
+alter table contributors add column if not exists locked_until timestamptz;
+
+-- One row per signed-in browser (a person can be signed in on several devices).
+create table if not exists sessions (
+  token_hash     text primary key,
+  contributor_id uuid not null references contributors(id) on delete cascade,
+  created_at     timestamptz not null default now()
+);
+create index if not exists sessions_by_contributor on sessions (contributor_id);
+
 create index if not exists samples_queue on samples (is_gold, review_count);
 create index if not exists samples_font on samples (font);
 create index if not exists samples_dataset on samples (dataset);
@@ -78,6 +93,8 @@ create trigger answers_count after insert or delete on answers
 alter table contributors enable row level security;
 alter table samples enable row level security;
 alter table answers enable row level security;
+alter table sessions enable row level security;
+alter table app_meta enable row level security;
 
 -- ---------------------------------------------------------------- quality views
 -- Per-person numbers used for trust, the leaderboard and spam flags.

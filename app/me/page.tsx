@@ -1,7 +1,5 @@
 "use client";
-import { useState } from "react";
 import { api, useApp } from "@/components/AppState";
-import { Copy } from "@/components/icons";
 import { Join } from "@/components/Join";
 
 const FLAG_TEXT: Record<string, string> = {
@@ -14,19 +12,15 @@ const FLAG_TEXT: Record<string, string> = {
 
 export default function Profile() {
   const { me, stats, loaded, refresh } = useApp();
-  const [key, setKey] = useState<string | null>(null);
-  const [copied, setCopied] = useState(false);
   if (!loaded) return null;
   if (!me) return <Join />;
   const acc = stats && stats.gold_total ? Math.round((100 * stats.gold_pass) / stats.gold_total) : null;
-  const reveal = async () => setKey((await api("/api/session/key")).key);
-  const copy = async () => { if (key) { await navigator.clipboard.writeText(key); setCopied(true); setTimeout(() => setCopied(false), 1500); } };
   const signOut = async () => { await api("/api/session", { method: "DELETE" }); await refresh(); };
 
   return (
     <>
       <h1>{me.handle}</h1>
-      <p className="lede">Contributor code <b className="mono">{me.code}</b> — this is how your work is credited in the dataset.</p>
+      <p className="lede">Your work is credited to this username in the dataset.</p>
       {stats && stats.flags?.length > 0 && (
         <div className="card panel" style={{ marginBottom: 18, background: "var(--warn-soft)", borderColor: "transparent" }}>
           <h3>A gentle note</h3>
@@ -41,12 +35,9 @@ export default function Profile() {
       </div>
 
       <div className="card panel" style={{ maxWidth: 680 }}>
-        <h2>Use another device</h2>
-        <p className="muted small">Your recovery key is your password: anyone with it can answer as you. Keep it private. Paste it on another phone or computer under “Continue with my recovery key”.</p>
-        {key ? (
-          <div className="keybox"><span style={{ flex: 1 }}>{key}</span><button className="iconbtn" onClick={copy} aria-label="Copy key"><Copy /></button>{copied && <span className="small">copied</span>}</div>
-        ) : <button className="btn" onClick={reveal}>Show my recovery key</button>}
-        <div style={{ marginTop: 18 }}><button className="btn ghost" onClick={signOut}>Sign out on this device</button></div>
+        <h2>Other devices</h2>
+        <p className="muted small">Sign in anywhere with your username <b>{me.handle}</b> and your PIN.</p>
+        <button className="btn ghost" onClick={signOut}>Sign out on this device</button>
       </div>
     </>
   );

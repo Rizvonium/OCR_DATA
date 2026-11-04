@@ -31,7 +31,7 @@ export async function GET(req: Request) {
 
   if (view === "answers") {
     const rows = await q(
-      `select a.created_at as time, k.handle as reviewer, k.code as reviewer_code, k.email as reviewer_email,
+      `select a.created_at as time, k.handle as reviewer, k.code as reviewer_code,
               c.id as picture_id, c.dataset, c.font, c.kind, c.proposed_text as typed_text, a.verdict as answer,
               a.correction, a.bad_crop, round(a.ms_spent / 1000.0, 1) as seconds, a.is_gold as check_item,
               case when s.is_gold then (case when s.gold_verdict = 'correct' then s.proposed_text else s.gold_text end) else c.final_text end as right_text,
@@ -45,7 +45,7 @@ export async function GET(req: Request) {
     const origin = u.origin;
     for (const r of rows as any[]) if (typeof r.image_url === "string" && r.image_url.startsWith("/")) r.image_url = origin + r.image_url;
     if (csv) {
-      const cols = ["time", "reviewer", "reviewer_code", "reviewer_email", "picture_id", "dataset", "font", "kind", "typed_text", "answer",
+      const cols = ["time", "reviewer", "reviewer_code", "picture_id", "dataset", "font", "kind", "typed_text", "answer",
         "correction", "bad_crop", "seconds", "check_item", "right_text", "was_right", "picture_status", "image_url"];
       return new Response(toCsv(rows, cols), { headers: { "content-type": "text/csv; charset=utf-8", "content-disposition": `attachment; filename="kashmiri-ocr-answers-${day}.csv"` } });
     }

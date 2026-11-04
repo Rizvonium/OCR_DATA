@@ -217,6 +217,7 @@ tr.me td{background:var(--accent-soft)}
   .review{grid-template-columns:1fr}
   .side{position:static}
   .hero{grid-template-columns:1fr}
+  .hero .join{order:-1}
   .grid3,.podium{grid-template-columns:1fr}
   .examples{grid-template-columns:1fr}
 }

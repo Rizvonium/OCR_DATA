@@ -11,7 +11,7 @@ combined into a clean dataset for training Kashmiri OCR.
 |---|---|
 | **Review** | picture, typed text, two buttons. Keys: `C` correct, `X` incorrect, `S` skip. If incorrect: the text box starts with the typed text so you fix one letter; on-screen keys for every Kashmiri vowel sign; a tick box for "the box itself is wrong". |
 | **Leaderboard** | points, reviews, this week / all time, and the progress of the whole dataset. |
-| **Profile** | your contributor code, stats, and a recovery key to continue on another device. |
+| **Profile** | your stats; sign out on this device. |
 | **Admin** (`/admin`) | **who answered what** (every picture, every reviewer's answer, right or wrong), **data per font**, spam flags, block / unblock, JSONL export. |
 
 Reviewers are never told the font, the dataset or which pictures are check items: none of it is sent
@@ -98,14 +98,14 @@ Images under `public/samples/` are deployed with the site. For large datasets (t
 images) upload them to Supabase Storage instead: also set `SUPABASE_URL` and `SUPABASE_SECRET_KEY`
 (Supabase → Project Settings → API keys → *secret* key, `sb_secret_…`) and add `--storage supabase`.
 
-## Who is who: unique contributor ids
+## Who is who: username + PIN
 
-- Joining takes a display name and a tick for consent (email optional). No password.
-- Each person gets a **contributor id** (UUID, internal), a public **code** like `KS-7F3K2Q` (shown on
-  the leaderboard and written into the export next to every sample they reviewed), and a secret
-  **recovery key** kept in a secure cookie. The database stores only a hash of the key.
-- To continue on another phone or computer, copy the recovery key from the Profile page.
-- Every sample has its own stable id (`<dataset>-<page>-L<line>-W<word>`), every answer its own row.
+- One form: **username** and a **4–6 digit PIN**. A new username creates a profile (after a consent
+  tick); an existing one signs in with its PIN, on any phone or computer. No email, no password.
+- Usernames are unique (case does not matter), so each person is identified by their username;
+  exports also carry a short code like `KS-7F3K2Q` that never changes.
+- The PIN is stored only as a salted scrypt hash. Five wrong PINs lock that username for 15 minutes.
+- A forgotten PIN cannot be recovered; the person picks a new username (an admin can see both in `/admin`).
 
 ## Spam and quality checks
 

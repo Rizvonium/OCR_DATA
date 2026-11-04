@@ -1,7 +1,6 @@
-// Contributor identity without a login provider.
-// Each person gets: a row in `contributors`, a public code (KS-7F3K2Q) and a secret key.
-// The key lives in an httpOnly cookie (and can be copied to another device as a "recovery key");
-// the database stores only its SHA-256 hash.
+// Contributor identity: a username and a PIN, nothing else.
+// Signing in gives the browser a random session key in an httpOnly cookie; the database keeps only
+// its SHA-256 hash (table `sessions`), and the PIN only as a salted scrypt hash.
 import crypto from "node:crypto";
 import { cookies, headers } from "next/headers";
 import { q } from "./db";
@@ -21,10 +20,11 @@ export type Me = { id: string; code: string; handle: string; status: string; ema
 export async function currentContributor(): Promise<Me | null> {
   const key = (await cookies()).get(COOKIE)?.value;
   if (!key) return null;
+  const h = sha256(key);
   const rows = await q<Me>(
-    "update contributors set last_seen_at = now() where token_hash = $1 returning id, code, handle, status, email, created_at",
-    [sha256(key)],
-  );
+    `update contributors set last_seen_at = now()
+     where id = (select contributor_id from sessions where token_hash = $1) or token_hash = $1
+     returning id, code, handle, status, email, created_at`, [h]);
   return rows[0] ?? null;
 }
 
@@ -54,4 +54,24 @@ export function isAdmin(req: Request): boolean {
   const got = req.headers.get("x-admin-key") || new URL(req.url).searchParams.get("key") || "";
   const a = Buffer.from(sha256(got)), b = Buffer.from(sha256(want));
   return crypto.timingSafeEqual(a, b);
+}
+
+// ---------------------------------------------------------------- PIN
+export const PIN_RE = /^\d{4,6}$/;
+export function hashPin(pin: string): string {
+  const salt = crypto.randomBytes(16).toString("hex");
+  return `${salt}:${crypto.scryptSync(pin, salt, 32).toString("hex")}`;
+}
+export function checkPin(pin: string, stored: string | null): boolean {
+  if (!stored) return false;
+  const [salt, hex] = stored.split(":");
+  const a = crypto.scryptSync(pin, salt, 32), b = Buffer.from(hex, "hex");
+  return a.length === b.length && crypto.timingSafeEqual(a, b);
+}
+
+/** Starts a signed-in session in this browser. */
+export async function startSession(contributorId: string) {
+  const key = newKey();
+  await q("insert into sessions (token_hash, contributor_id) values ($1, $2)", [sha256(key), contributorId]);
+  await setKeyCookie(key);
 }

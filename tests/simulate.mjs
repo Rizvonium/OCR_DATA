@@ -17,7 +17,7 @@ async function person(name, { careful, types, delay }) {
     const sc = r.headers.get("set-cookie"); if (sc) cookie = sc.split(";")[0];
     return { status: r.status, data: await r.json() };
   };
-  const j = await call("/api/session", "POST", { handle: name, consent: true });
+  const j = await call("/api/session", "POST", { handle: name, pin: "2468", consent: true });
   if (j.status !== 200) throw new Error(`${name}: join ${j.status} ${JSON.stringify(j.data)}`);
   let refused = 0, golds = 0, goldOk = 0;
   for (let i = 0; i < PER; i++) {
