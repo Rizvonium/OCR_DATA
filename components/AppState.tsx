@@ -5,7 +5,7 @@ export type Me = { id: string; code: string; handle: string; status: string; ema
 export type Stats = {
   reviews: number; corrections: number; confirmed_corrections: number; gold_total: number; gold_pass: number;
   agreement_n: number; agreement_hits: number; today: number; flags: string[]; trust: number;
-  points: number | null; rank: number; ranked: number;
+  points: number | null; rank: number; ranked: number; photos: number;
 };
 type Ctx = { preview: boolean; me: Me | null; stats: Stats | null; loaded: boolean; refresh: () => Promise<void>; setStats: (s: Stats) => void };
 const C = createContext<Ctx>({ preview: false, me: null, stats: null, loaded: false, refresh: async () => {}, setStats: () => {} });

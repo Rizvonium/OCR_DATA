@@ -29,6 +29,16 @@ async function answersView(only: string, offset: number) {
 export async function GET(req: Request) {
   if (!isAdmin(req)) return fail("Admin key required.", 401);
   const u = new URL(req.url);
+  if (u.searchParams.get("view") === "uploads") {
+    const status = u.searchParams.get("status") || "new";
+    const rows = await q(
+      `select u.id, u.source, u.page, u.note, u.width, u.height, u.bytes, u.quality, u.status, u.created_at, u.url,
+              c.handle, c.code
+       from uploads u join contributors c on c.id = u.contributor_id
+       where ($1 = 'all' or u.status = $1) order by u.created_at desc limit 300`, [status]);
+    const counts = await q("select status, count(*)::int as n from uploads group by status");
+    return json({ rows, counts: Object.fromEntries(counts.map((r: any) => [r.status, r.n])) });
+  }
   if (u.searchParams.get("view") === "answers")
     return json({ rows: await answersView(u.searchParams.get("only") || "gold", Number(u.searchParams.get("offset")) || 0) });
   const people = await q(
@@ -61,6 +71,12 @@ export async function POST(req: Request) {
     const r = await q("update contributors set status = $2, admin_note = coalesce($3, admin_note) where code = $1 returning code, status",
       [b.code, b.status, b.note ?? null]);
     return r.length ? json(r[0]) : fail("No such contributor.", 404);
+  }
+  if (b.action === "upload_status") {
+    if (!["new", "kept", "rejected", "used"].includes(b.status)) return fail("Unknown status.");
+    const ids = (Array.isArray(b.ids) ? b.ids : [b.id]).map(Number).filter(Number.isInteger);
+    const r = await q("update uploads set status = $2 where id = any($1::bigint[]) returning id", [ids, b.status]);
+    return json({ updated: r.length });
   }
   if (b.action === "promote_gold") {
     // Unanimous, well-reviewed items become new check items for people who have not seen them yet.

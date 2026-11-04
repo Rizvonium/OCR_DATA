@@ -11,6 +11,7 @@ combined into a clean dataset for training Kashmiri OCR.
 |---|---|
 | **Review** | picture, typed text, two buttons. Keys: `C` correct, `X` incorrect, `S` skip. If incorrect: the text box starts with the typed text so you fix one letter; a complete on-screen Kashmiri keyboard; a tick box for "the box itself is wrong". |
 | **Leaderboard** | points, reviews, this week / all time, and the progress of the whole dataset. |
+| **Add photos** | photograph Kashmiri pages; they are checked for blur and later cut into words. |
 | **Profile** | your stats; sign out on this device. |
 | **Admin** (`/admin`) | **who answered what** (every picture, every reviewer's answer, right or wrong), **data per font**, spam flags, block / unblock, JSONL export. |
 
@@ -150,6 +151,32 @@ put this in cell A1 of an empty, private sheet (it contains your admin key):
 ```text
 =IMPORTDATA("https://kasdata.vercel.app/api/export?key=YOUR_ADMIN_KEY&format=csv&view=answers")
 ```
+
+### Page photos from contributors
+
+**Add photos** (`/upload`) lets signed-in people photograph Kashmiri pages (camera button on phones)
+or pick photos. The browser shrinks each photo (long side 2,400 px, JPEG), warns when it looks blurry
+or dark, and uploads it with the person, book/source and page. Identical photos are stored once;
+80 photos per person per day. Photos are kept in the database; connect Vercel → Storage → **Blob** to
+the project (it sets `BLOB_READ_WRITE_TOKEN`) and new photos go to Blob storage instead, better once
+there are hundreds. Uploaders see their own photos; only the admin sees everyone's.
+
+In `/admin` → **Uploaded page photos**: open, **Keep** or **Reject**. Then turn kept photos into
+review pictures:
+
+```bash
+SITE=https://kasdata.vercel.app ADMIN_KEY=... npm run uploads:download -- photos/ --mark-used
+```
+```bash
+python3 segmentation/make_samples.py photos/ out/photos --dataset photos --no-text
+```
+```bash
+npm run import -- out/photos
+```
+
+`--no-text` cuts every word the segmenter finds and shows the word model's reading as the typed text,
+so reviewers correct the model. If you have typed text for a photo, put it in `upload-<id>.txt` next
+to it and leave `--no-text` off.
 
 ### Seeing who answered what
 

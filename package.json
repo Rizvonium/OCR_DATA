@@ -8,7 +8,8 @@
     "start": "next start",
     "db:setup": "node scripts/db-setup.mjs",
     "import": "node scripts/import-samples.mjs",
-    "simulate": "node tests/simulate.mjs"
+    "simulate": "node tests/simulate.mjs",
+    "uploads:download": "node scripts/download-uploads.mjs"
   },
   "dependencies": {
     "@electric-sql/pglite": "0.5.15",
@@ -16,6 +17,7 @@
     "@fontsource/newsreader": "5.3.0",
     "@fontsource/noto-naskh-arabic": "5.3.0",
     "@fontsource/noto-nastaliq-urdu": "5.3.0",
+    "@vercel/blob": "^2.8.2",
     "next": "15.5.29",
     "postgres": "^3.4.7",
     "react": "19.3.1",

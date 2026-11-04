@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { useApp } from "./AppState";
 import { Leaf, Moon, Sun } from "./icons";
 
-const LINKS = [["/", "Review"], ["/leaderboard", "Leaderboard"], ["/guide", "Guide", "How to judge"], ["/me", "Profile"]];
+const LINKS = [["/", "Review"], ["/upload", "Photos", "Add photos"], ["/leaderboard", "Board", "Leaderboard"], ["/guide", "Guide", "How to judge"], ["/me", "Me", "Profile"]];
 
 export function TopBar() {
   const path = usePathname();

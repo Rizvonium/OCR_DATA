@@ -19,6 +19,9 @@ OUT_DIR gets
   manifest.jsonl  one sample per line: id, dataset, kind, image, context, text, source_ref
 
 Every sample id is stable and unique: <dataset>-<page>-L<line>-W<word> (or -LINE).
+--no-text is for photos people uploaded (no typed text): every word the segmenter finds becomes a
+sample, and the Kashmiri word model's reading is shown as the typed text for reviewers to check.
+
 Fonts: give --font NAME when the whole folder is one typeface, or --font-map fonts.tsv with
 "<page file stem><TAB><font>" lines when pages differ. The font is stored with every sample for
 statistics only (how much data per typeface); reviewers are never shown it.
@@ -110,6 +113,7 @@ def main():
     ap.add_argument("--proposals", choices=("typed", "model"), default="typed")
     ap.add_argument("--model", default=os.path.join(os.path.dirname(__file__), "..", "..", "kashmiri_ocr",
                                                      "public", "models", "kashmiri_word_ocr_int8.onnx"))
+    ap.add_argument("--no-text", action="store_true", help="pages have no .txt: use the word model's reading for every word")
     ap.add_argument("--font", help="typeface of every page here, e.g. 'Gulmarg Nastaleeq'")
     ap.add_argument("--font-map", help="TSV: page file stem <TAB> font (overrides --font per page)")
     ap.add_argument("--max-width", type=int, default=900, help="downscale crops wider than this")
@@ -121,6 +125,8 @@ def main():
             if "\t" in ln:
                 k, v = ln.rstrip("\n").split("\t", 1)
                 font_map[os.path.splitext(k)[0]] = v.strip()
+    if a.no_text:
+        a.proposals = "model"
     model = WordModel(a.model) if a.proposals == "model" else None
     os.makedirs(os.path.join(a.out, "img"), exist_ok=True)
     os.makedirs(os.path.join(a.out, "ctx"), exist_ok=True)
@@ -130,18 +136,21 @@ def main():
         for fname in pages:
             stem = os.path.splitext(fname)[0]
             txt = os.path.join(a.pages, stem + ".txt")
-            if not os.path.exists(txt):
+            has_text = os.path.exists(txt)
+            if not has_text and not a.no_text:
                 stats["no_text"] += 1
-                print(f"skip {fname}: no {stem}.txt", file=sys.stderr)
+                print(f"skip {fname}: no {stem}.txt (use --no-text for photos without typed text)", file=sys.stderr)
                 continue
-            typed = [norm_ks(l) for l in open(txt, encoding="utf-8").read().splitlines() if l.strip()]
+            typed = [norm_ks(l) for l in open(txt, encoding="utf-8").read().splitlines() if l.strip()] if has_text else None
             rgb = Image.open(os.path.join(a.pages, fname)).convert("RGB")
             gray = np.asarray(rgb.convert("L"))
             calib, lines, _ = segment_page(gray, tuple(a.col))
             SW, LH = calib["SW"], calib["LH"]
             margin = max(4, int(round(1.5 * SW)))
             stats["pages"] += 1
-            if len(lines) != len(typed):
+            if typed is None:
+                typed = [None] * len(lines)
+            elif len(lines) != len(typed):
                 stats["line_count_mismatch"] += 1
                 print(f"{fname}: {len(lines)} lines found, {len(typed)} typed; pairing the first {min(len(lines), len(typed))}",
                       file=sys.stderr)
@@ -149,8 +158,8 @@ def main():
                 if not line["words"]:
                     continue
                 stats["lines"] += 1
-                tw = text.split()
                 boxes = [word_box(w) for w in line["words"]]
+                tw = text.split() if text is not None else [None] * len(boxes)
                 if len(boxes) == len(tw):
                     items = [(f"L{li + 1:02d}-W{wi + 1:02d}", "word", b, t, wi) for wi, (b, t) in enumerate(zip(boxes, tw))]
                 else:
@@ -163,6 +172,8 @@ def main():
                     proposed = truth
                     if model is not None and kind == "word":
                         proposed = model.read(g) or truth
+                    if not proposed:
+                        continue  # no typed text and the model read nothing: nothing to check
                     im = Image.fromarray(g)
                     if im.width > a.max_width:
                         im = im.resize((a.max_width, max(1, round(im.height * a.max_width / im.width))), Image.LANCZOS)

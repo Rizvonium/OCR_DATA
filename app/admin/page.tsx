@@ -56,6 +56,48 @@ function WhoAnswered({ adminKey }: { adminKey: string }) {
   );
 }
 
+function Photos({ adminKey }: { adminKey: string }) {
+  const [status, setStatus] = useState("new");
+  const [data, setData] = useState<{ rows: any[]; counts: Record<string, number> } | null>(null);
+  const load = useCallback(() => {
+    fetch(`/api/admin?view=uploads&status=${status}`, { headers: { "x-admin-key": adminKey } }).then((r) => r.json()).then(setData);
+  }, [status, adminKey]);
+  useEffect(() => { load(); }, [load]);
+  const set = async (id: number, s: string) => {
+    await fetch("/api/admin", { method: "POST", headers: { "x-admin-key": adminKey, "content-type": "application/json" }, body: JSON.stringify({ action: "upload_status", id, status: s }) });
+    load();
+  };
+  const k = encodeURIComponent(adminKey);
+  return (
+    <>
+      <h2>Uploaded page photos</h2>
+      <p className="muted small" style={{ marginTop: -4 }}>Keep the usable ones; then <code>npm run uploads:download</code> fetches the kept photos for segmentation (see README).</p>
+      <div className="tabs">
+        {["new", "kept", "used", "rejected", "all"].map((s) => (
+          <button key={s} aria-pressed={status === s} onClick={() => setStatus(s)}>{s} {s !== "all" && <span className="muted">{data?.counts[s] ?? 0}</span>}</button>
+        ))}
+      </div>
+      <div className="up-grid" style={{ marginBottom: 18 }}>
+        {!data ? <p className="muted">Loading…</p> : data.rows.length === 0 ? <p className="muted">No photos here.</p> : data.rows.map((p) => (
+          <div className="card up-card" key={p.id}>
+            <a href={`/api/uploads/${p.id}?key=${k}`} target="_blank" rel="noreferrer">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={`/api/uploads/${p.id}?size=thumb&key=${k}`} alt="" loading="lazy" />
+            </a>
+            <div className="small"><b>{p.handle}</b> · {new Date(p.created_at).toLocaleDateString()}</div>
+            <div className="small muted">{p.source || "—"}{p.page ? ` · p. ${p.page}` : ""} · {p.width}×{p.height}</div>
+            <div className="small">{p.quality?.label === "blurry" ? <span className="flag">blurry</span> : <span className="flag okflag">{p.quality?.label || "?"}</span>}{p.quality?.dark && <span className="flag">dark</span>}</div>
+            <div style={{ display: "flex", gap: 6, marginTop: 4 }}>
+              <button className="btn" style={{ height: 32, padding: "0 10px", flex: 1 }} disabled={p.status === "kept"} onClick={() => set(p.id, "kept")}>Keep</button>
+              <button className="btn ghost" style={{ height: 32, padding: "0 10px", flex: 1 }} disabled={p.status === "rejected"} onClick={() => set(p.id, "rejected")}>Reject</button>
+            </div>
+          </div>
+        ))}
+      </div>
+    </>
+  );
+}
+
 export default function Admin() {
   const [key, setKey] = useState("");
   const [data, setData] = useState<Data | null>(null);
@@ -152,6 +194,8 @@ export default function Admin() {
           </tbody>
         </table>
       </div>
+
+      <Photos adminKey={key} />
 
       <WhoAnswered adminKey={key} />
 

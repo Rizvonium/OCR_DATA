@@ -113,7 +113,8 @@ export async function myStats(cid: string) {
             f.agreement_n::int, f.agreement_hits::int, f.last_day::int as today, f.flags, f.trust::float,
             l.points::int as points,
             (select count(*)::int + 1 from leaderboard x where x.points > coalesce(l.points, -1)) as rank,
-            (select count(*)::int from leaderboard) as ranked
+            (select count(*)::int from leaderboard) as ranked,
+            (select count(*)::int from uploads u where u.contributor_id = f.id) as photos
      from contributor_flags f left join leaderboard l on l.code = f.code where f.id = $1`, [cid]);
   return s ?? null;
 }

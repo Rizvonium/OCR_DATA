@@ -87,6 +87,29 @@ drop trigger if exists answers_count on answers;
 create trigger answers_count after insert or delete on answers
   for each row execute function bump_review_count();
 
+-- Photos of Kashmiri pages that people upload, to be turned into review pictures later.
+-- The photo lives in Vercel Blob storage when it is connected (url), otherwise in this table (data).
+create table if not exists uploads (
+  id             bigint generated always as identity primary key,
+  contributor_id uuid not null references contributors(id) on delete cascade,
+  sha256         text not null unique,            -- the same photo twice is stored once
+  mime           text not null,
+  bytes          int not null,
+  width          int not null,
+  height         int not null,
+  source         text,                            -- book, newspaper, sign... as typed by the uploader
+  page           text,
+  note           text,
+  quality        jsonb not null default '{}'::jsonb, -- sharpness / brightness measured in the browser
+  url            text,                            -- Vercel Blob URL, when used
+  data           bytea,                           -- the photo itself, when no Blob storage
+  thumb          bytea not null,                  -- small JPEG for lists
+  status         text not null default 'new' check (status in ('new', 'kept', 'rejected', 'used')),
+  created_at     timestamptz not null default now()
+);
+create index if not exists uploads_by_contributor on uploads (contributor_id, created_at desc);
+create index if not exists uploads_by_status on uploads (status, created_at desc);
+
 -- Supabase exposes the public schema through its REST API to anyone holding the publishable key.
 -- Row level security with no policies closes that door; the app's server connects as the
 -- database owner and is not affected.
@@ -95,6 +118,7 @@ alter table samples enable row level security;
 alter table answers enable row level security;
 alter table sessions enable row level security;
 alter table app_meta enable row level security;
+alter table uploads enable row level security;
 
 -- ---------------------------------------------------------------- quality views
 -- Per-person numbers used for trust, the leaderboard and spam flags.

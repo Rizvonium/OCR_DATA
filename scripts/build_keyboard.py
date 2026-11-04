@@ -13,14 +13,16 @@ import collections, json, sys, unicodedata, zipfile
 
 ALWAYS = "اآأٲٳبپتٹثجچحخدڈذرڑزژسشصضطظعغفقکگلمنںوۄۆۅہھءیؠێۍےۓئؤۂ" + "َُِٕٖٟٔٗٚٛٓٗٔ" + "ّْٰٖٓ" + "‌"
 DROP = set("كيهى؁؂﻿‍")
-SHORT = {  # short captions for the signs people use most
-    "َ": "zabar", "ِ": "zer", "ُ": "pesh", "ٔ": "hamza ə", "ٕ": "hamza below ɨ",
-    "ٖ": "khaḍā zer iː", "ٗ": "ulṭā pesh uː", "ٚ": "small v e/o", "ٛ": "inverted v ʲ/ʷ",
-    "ٟ": "wavy hamza ɨː", "ّ": "shad", "ْ": "sukun", "ٰ": "khaḍā zabar", "ٓ": "madd",
-    "ً": "do zabar", "ٍ": "do zer", "ٌ": "do pesh", "٘": "noon ghunna", "۪": "low stop",
-    "ۭ": "small meem", "ٙ": "zwarakay", "ؐ": "sallallahu", "ؑ": "alayhis-salam",
-    "ؒ": "rahmatullah", "ؓ": "radiallahu", "ؔ": "takhallus", "‌": "no join",
+SHORT = {  # sound first, then the usual name, so the right key is easy to spot
+    "\u064e": "a · zabar", "\u0650": "i · zer", "\u064f": "u · pesh", "\u0654": "ə · hamza", "\u0655": "ɨ · hamza below",
+    "\u065a": "e/o · small v", "\u065b": "ʲ/ʷ · inverted v", "\u0657": "uː · ulṭā pesh", "\u0656": "iː · khaḍā zer",
+    "\u065f": "ɨː · wavy hamza", "\u0651": "shad", "\u0652": "sukun", "\u0670": "khaḍā zabar", "\u0653": "madd",
+    "\u064b": "do zabar", "\u064d": "do zer", "\u064c": "do pesh", "\u0658": "noon ghunna", "\u06ea": "low stop",
+    "\u06ed": "small meem", "\u0659": "zwarakay", "\u0610": "sallallahu", "\u0611": "alayhis-salam",
+    "\u0612": "rahmatullah", "\u0613": "radiallahu", "\u0614": "takhallus", "\u200c": "no join",
 }
+# Kashmiri vowel signs, always first and in this order on the signs tab
+CORE = "\u064e\u0650\u064f\u0654\u0655\u065a\u065b\u0657\u0656\u065f\u0651\u0652"
 
 
 def texts(path):
@@ -65,7 +67,7 @@ def main():
                      "label": SHORT.get(c, "")})
     # signs: most used first; letters: Unicode order (close to the Arabic alphabet); the rest by use
     keys.sort(key=lambda k: (k["group"] != "signs", k["group"] != "letters",
-                             -k["n"] if k["group"] != "letters" else ord(k["c"])))
+                             k["c"] not in CORE, (CORE.index(k["c"]) if k["c"] in CORE else -k["n"]) if k["group"] != "letters" else ord(k["c"])))
     json.dump({"sources": [s.split("/")[-1] for s in sources], "keys": keys}, open(out, "w", encoding="utf-8"),
               ensure_ascii=False, indent=0)
     g = collections.Counter(k["group"] for k in keys)

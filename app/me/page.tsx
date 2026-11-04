@@ -31,6 +31,7 @@ export default function Profile() {
       <div className="grid3">
         <div className="card stat"><div className="k">Points</div><div className="v">{stats?.points ?? 0}</div><div className="s">{stats?.points ? `Rank #${stats.rank} of ${stats.ranked}` : "Not ranked yet"}</div></div>
         <div className="card stat"><div className="k">Pictures reviewed</div><div className="v">{stats?.reviews ?? 0}</div><div className="s">{stats?.today ?? 0} in the last 24 hours</div></div>
+        <div className="card stat"><div className="k">Page photos added</div><div className="v">{stats?.photos ?? 0}</div><div className="s"><a href="/upload">add more</a></div></div>
         <div className="card stat"><div className="k">Check items right</div><div className="v">{acc === null ? "—" : `${acc}%`}</div><div className="s">{stats?.gold_pass ?? 0} of {stats?.gold_total ?? 0}</div></div>
       </div>
 

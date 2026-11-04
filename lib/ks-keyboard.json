@@ -7,52 +7,44 @@
 ],
 "keys": [
 {
-"c": "ِ",
+"c": "َ",
 "group": "signs",
-"n": 21657,
-"name": "Kasra",
-"code": "U+0650",
-"label": "zer"
+"n": 16350,
+"name": "Fatha",
+"code": "U+064E",
+"label": "a · zabar"
 },
 {
-"c": "ٕ",
+"c": "ِ",
 "group": "signs",
-"n": 20769,
-"name": "Hamza Below",
-"code": "U+0655",
-"label": "hamza below ɨ"
+"n": 21648,
+"name": "Kasra",
+"code": "U+0650",
+"label": "i · zer"
 },
 {
 "c": "ُ",
 "group": "signs",
-"n": 16932,
+"n": 16922,
 "name": "Damma",
 "code": "U+064F",
-"label": "pesh"
-},
-{
-"c": "َ",
-"group": "signs",
-"n": 16363,
-"name": "Fatha",
-"code": "U+064E",
-"label": "zabar"
-},
-{
-"c": "ٛ",
-"group": "signs",
-"n": 5845,
-"name": "Vowel Sign Inverted Small V Above",
-"code": "U+065B",
-"label": "inverted v ʲ/ʷ"
+"label": "u · pesh"
 },
 {
 "c": "ٔ",
 "group": "signs",
-"n": 4698,
+"n": 4695,
 "name": "Hamza Above",
 "code": "U+0654",
-"label": "hamza ə"
+"label": "ə · hamza"
+},
+{
+"c": "ٕ",
+"group": "signs",
+"n": 20765,
+"name": "Hamza Below",
+"code": "U+0655",
+"label": "ɨ · hamza below"
 },
 {
 "c": "ٚ",
@@ -60,7 +52,15 @@
 "n": 4265,
 "name": "Vowel Sign Small V Above",
 "code": "U+065A",
-"label": "small v e/o"
+"label": "e/o · small v"
+},
+{
+"c": "ٛ",
+"group": "signs",
+"n": 5843,
+"name": "Vowel Sign Inverted Small V Above",
+"code": "U+065B",
+"label": "ʲ/ʷ · inverted v"
 },
 {
 "c": "ٗ",
@@ -68,23 +68,15 @@
 "n": 3629,
 "name": "Inverted Damma",
 "code": "U+0657",
-"label": "ulṭā pesh uː"
+"label": "uː · ulṭā pesh"
 },
 {
 "c": "ٖ",
 "group": "signs",
-"n": 2542,
+"n": 2540,
 "name": "Subscript Alef",
 "code": "U+0656",
-"label": "khaḍā zer iː"
-},
-{
-"c": "۪",
-"group": "signs",
-"n": 1266,
-"name": "Empty Centre Low Stop",
-"code": "U+06EA",
-"label": "low stop"
+"label": "iː · khaḍā zer"
 },
 {
 "c": "ٟ",
@@ -92,7 +84,31 @@
 "n": 116,
 "name": "Wavy Hamza Below",
 "code": "U+065F",
-"label": "wavy hamza ɨː"
+"label": "ɨː · wavy hamza"
+},
+{
+"c": "ّ",
+"group": "signs",
+"n": 93,
+"name": "Shadda",
+"code": "U+0651",
+"label": "shad"
+},
+{
+"c": "ْ",
+"group": "signs",
+"n": 5,
+"name": "Sukun",
+"code": "U+0652",
+"label": "sukun"
+},
+{
+"c": "۪",
+"group": "signs",
+"n": 1265,
+"name": "Empty Centre Low Stop",
+"code": "U+06EA",
+"label": "low stop"
 },
 {
 "c": "ٍ",
@@ -117,14 +133,6 @@
 "name": "Fathatan",
 "code": "U+064B",
 "label": "do zabar"
-},
-{
-"c": "ّ",
-"group": "signs",
-"n": 94,
-"name": "Shadda",
-"code": "U+0651",
-"label": "shad"
 },
 {
 "c": "ٰ",
@@ -183,14 +191,6 @@
 "label": "radiallahu"
 },
 {
-"c": "ْ",
-"group": "signs",
-"n": 5,
-"name": "Sukun",
-"code": "U+0652",
-"label": "sukun"
-},
-{
 "c": "ٙ",
 "group": "signs",
 "n": 3,
@@ -217,7 +217,7 @@
 {
 "c": "ؠ",
 "group": "letters",
-"n": 2795,
+"n": 2793,
 "name": "Kashmiri Yeh",
 "code": "U+0620",
 "label": ""
@@ -273,7 +273,7 @@
 {
 "c": "ا",
 "group": "letters",
-"n": 63593,
+"n": 63587,
 "name": "Alef",
 "code": "U+0627",
 "label": ""
@@ -281,7 +281,7 @@
 {
 "c": "ب",
 "group": "letters",
-"n": 18909,
+"n": 18906,
 "name": "Beh",
 "code": "U+0628",
 "label": ""
@@ -297,7 +297,7 @@
 {
 "c": "ت",
 "group": "letters",
-"n": 31092,
+"n": 31082,
 "name": "Teh",
 "code": "U+062A",
 "label": ""
@@ -313,7 +313,7 @@
 {
 "c": "ج",
 "group": "letters",
-"n": 8111,
+"n": 8109,
 "name": "Jeem",
 "code": "U+062C",
 "label": ""
@@ -329,7 +329,7 @@
 {
 "c": "خ",
 "group": "letters",
-"n": 4199,
+"n": 4197,
 "name": "Khah",
 "code": "U+062E",
 "label": ""
@@ -337,7 +337,7 @@
 {
 "c": "د",
 "group": "letters",
-"n": 20555,
+"n": 20549,
 "name": "Dal",
 "code": "U+062F",
 "label": ""
@@ -353,7 +353,7 @@
 {
 "c": "ر",
 "group": "letters",
-"n": 52370,
+"n": 52368,
 "name": "Reh",
 "code": "U+0631",
 "label": ""
@@ -369,7 +369,7 @@
 {
 "c": "س",
 "group": "letters",
-"n": 32541,
+"n": 32537,
 "name": "Seen",
 "code": "U+0633",
 "label": ""
@@ -409,7 +409,7 @@
 {
 "c": "ظ",
 "group": "letters",
-"n": 1261,
+"n": 1259,
 "name": "Zah",
 "code": "U+0638",
 "label": ""
@@ -417,7 +417,7 @@
 {
 "c": "ع",
 "group": "letters",
-"n": 5391,
+"n": 5389,
 "name": "Ain",
 "code": "U+0639",
 "label": ""
@@ -425,7 +425,7 @@
 {
 "c": "غ",
 "group": "letters",
-"n": 1401,
+"n": 1399,
 "name": "Ghain",
 "code": "U+063A",
 "label": ""
@@ -449,7 +449,7 @@
 {
 "c": "ل",
 "group": "letters",
-"n": 26976,
+"n": 26972,
 "name": "Lam",
 "code": "U+0644",
 "label": ""
@@ -457,7 +457,7 @@
 {
 "c": "م",
 "group": "letters",
-"n": 33939,
+"n": 33930,
 "name": "Meem",
 "code": "U+0645",
 "label": ""
@@ -465,7 +465,7 @@
 {
 "c": "ن",
 "group": "letters",
-"n": 65710,
+"n": 65699,
 "name": "Noon",
 "code": "U+0646",
 "label": ""
@@ -473,7 +473,7 @@
 {
 "c": "و",
 "group": "letters",
-"n": 50060,
+"n": 50046,
 "name": "Waw",
 "code": "U+0648",
 "label": ""
@@ -481,7 +481,7 @@
 {
 "c": "ٮ",
 "group": "letters",
-"n": 1582,
+"n": 1581,
 "name": "Dotless Beh",
 "code": "U+066E",
 "label": ""
@@ -497,7 +497,7 @@
 {
 "c": "ٲ",
 "group": "letters",
-"n": 9361,
+"n": 9359,
 "name": "Alef With Wavy Hamza Above",
 "code": "U+0672",
 "label": ""
@@ -521,7 +521,7 @@
 {
 "c": "ٹ",
 "group": "letters",
-"n": 11480,
+"n": 11478,
 "name": "Tteh",
 "code": "U+0679",
 "label": ""
@@ -529,7 +529,7 @@
 {
 "c": "پ",
 "group": "letters",
-"n": 13447,
+"n": 13445,
 "name": "Peh",
 "code": "U+067E",
 "label": ""
@@ -553,7 +553,7 @@
 {
 "c": "ڑ",
 "group": "letters",
-"n": 773,
+"n": 771,
 "name": "Rreh",
 "code": "U+0691",
 "label": ""
@@ -561,7 +561,7 @@
 {
 "c": "ژ",
 "group": "letters",
-"n": 5560,
+"n": 5558,
 "name": "Jeh",
 "code": "U+0698",
 "label": ""
@@ -569,7 +569,7 @@
 {
 "c": "ک",
 "group": "letters",
-"n": 31681,
+"n": 31677,
 "name": "Keheh",
 "code": "U+06A9",
 "label": ""
@@ -609,7 +609,7 @@
 {
 "c": "ھ",
 "group": "letters",
-"n": 19201,
+"n": 19191,
 "name": "Heh Doachashmee",
 "code": "U+06BE",
 "label": ""
@@ -617,7 +617,7 @@
 {
 "c": "ہ",
 "group": "letters",
-"n": 33400,
+"n": 33390,
 "name": "Heh Goal",
 "code": "U+06C1",
 "label": ""
@@ -649,7 +649,7 @@
 {
 "c": "ۅ",
 "group": "letters",
-"n": 1301,
+"n": 1299,
 "name": "Kirghiz Oe",
 "code": "U+06C5",
 "label": ""
@@ -665,7 +665,7 @@
 {
 "c": "ی",
 "group": "letters",
-"n": 55551,
+"n": 55542,
 "name": "Farsi Yeh",
 "code": "U+06CC",
 "label": ""
