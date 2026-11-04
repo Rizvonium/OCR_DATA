@@ -12,8 +12,14 @@ import os
 import random
 import re
 
+import sys
+
 import numpy as np
 from PIL import Image, ImageDraw, ImageFilter, ImageFont, features
+
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from mark_check import marks_ok  # noqa: E402
 
 
 def font_label(path):
@@ -40,6 +46,7 @@ def main():
         cmap = TTFont(fp).getBestCmap() or {}
         drawable[fp] = [w for w in words if all(ord(c) in cmap for c in w)]
         print(f"{font_label(fp)}: can draw {len(drawable[fp])} of {len(words)} words")
+    skipped = {}
     for p in range(a.pages * len(fonts)):
         font_path = fonts[p % len(fonts)]
         nast = any(k in font_path for k in ("Nastaliq", "Nastaleeq", "Gulzar"))
@@ -51,7 +58,15 @@ def main():
         pitch = int(size * (2.6 if nast else 2.0))
         lines, y = [], int(pitch * 0.9)
         while y < H - pitch * 0.9:
-            ln = [rnd.choice(drawable[font_path]) for _ in range(rnd.randint(3, 5))]
+            want = rnd.randint(3, 5)
+            ln = []
+            while len(ln) < want:
+                w = rnd.choice(drawable[font_path])
+                ok, why = marks_ok(font_path, w, size)  # every vowel sign must show up at this size
+                if ok:
+                    ln.append(w)
+                else:
+                    skipped[font_label(font_path)] = skipped.get(font_label(font_path), 0) + 1
             text = " ".join(ln)
             spaced = "   ".join(ln)  # generous word gaps, as in printed Kashmiri books
             d.text((W - 70, y), spaced, font=font, fill=0, anchor="rm", direction="rtl", language="ks")
@@ -69,6 +84,8 @@ def main():
             fh.write("\n".join(lines) + "\n")
         font_names.write(f"page{p + 1:02d}\t{font_label(font_path)}\n")
         print(f"page{p + 1:02d}: {os.path.basename(font_path)} size {size}, {len(lines)} lines")
+    if skipped:
+        print("words skipped because a vowel sign would not show:", skipped)
 
 
 if __name__ == "__main__":

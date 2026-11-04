@@ -94,6 +94,17 @@ async function seedStarterData(query: Query) {
          proposed_text text, source_ref jsonb, is_gold boolean, gold_verdict text, gold_text text)
        on conflict (id) do nothing`, [JSON.stringify(rows.slice(i, i + 1000))]);
   }
+  // pictures removed from the starter file: delete them if nobody answered them yet, otherwise keep
+  // them (answers stay) but stop using them as check items
+  const datasets = [...new Set(rows.map((r) => r.dataset))];
+  const ids = JSON.stringify(rows.map((r) => r.id));
+  await query(
+    `delete from samples s where s.dataset = any($1::text[])
+       and not exists (select 1 from jsonb_array_elements_text(($2::text)::jsonb) m(id) where m.id = s.id)
+       and not exists (select 1 from answers a where a.sample_id = s.id)`, [datasets, ids]);
+  await query(
+    `update samples s set is_gold = false where s.is_gold and s.dataset = any($1::text[])
+       and not exists (select 1 from jsonb_array_elements_text(($2::text)::jsonb) m(id) where m.id = s.id)`, [datasets, ids]);
   await query("insert into app_meta (k, v) values ('starter_data', $1) on conflict (k) do update set v = excluded.v", [hash]);
 }
 

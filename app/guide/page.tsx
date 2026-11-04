@@ -18,6 +18,7 @@ export default function Guide() {
         <li>A letter is different: ز for ژ, ر for ڑ, ی for ے, ک for گ.</li>
         <li>A Kashmiri vowel sign is missing, extra or different: ٲ, ۄ, ٕ (ɨ), ٔ (ə), ٚ, ٗ, ٖ.</li>
         <li>The typed text belongs to a neighbouring word.</li>
+        <li>A sign in the typed text that you <b>cannot see</b> in the picture — too faint, or blended into a letter — counts as missing. Judge only what is visible.</li>
       </ul>
       <p>If you can, type the right text (it starts filled in with the typed text, so usually you only fix one letter or sign). If you are unsure how to type it, just press <b>Submit without typing</b> — knowing that a pair is wrong is already useful.</p>
 

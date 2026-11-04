@@ -89,6 +89,16 @@ export async function submitAnswer(cid: string, a: AnswerIn): Promise<AnswerOut>
      values ($1, $2, $3, $4, $5, $6, $7, $8) on conflict (sample_id, contributor_id) do nothing returning id`,
     [s.id, cid, verdict, correction, badCrop, Math.min(ms, 3_600_000), s.is_gold, goldPass]);
   if (!ins.length) return { ok: false, status: 409, error: "You already answered this one." };
+  // A check item that most people "fail" probably has a wrong stored answer (e.g. a vowel sign the
+  // font printed too faintly to see). After 3 answers with fewer than half passing it stops being a
+  // check item; nobody keeps a penalty and the answers count as ordinary votes.
+  if (s.is_gold) {
+    const retired = await q(
+      `update samples set is_gold = false where id = $1 and (
+         select count(*) >= 3 and count(*) filter (where gold_pass) * 2 < count(*)
+         from answers where sample_id = $1 and is_gold and gold_pass is not null) returning id`, [s.id]);
+    if (retired.length) await q("update answers set is_gold = false, gold_pass = null where sample_id = $1", [s.id]);
+  }
   return {
     ok: true,
     gold: s.is_gold && verdict !== "skip"

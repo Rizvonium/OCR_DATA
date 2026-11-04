@@ -32,7 +32,7 @@ npm run dev
 Open http://localhost:3000. Without `DATABASE_URL` the app uses a built-in local Postgres (PGlite, in
 `.data/`), so nothing else is needed (the import step is optional: an empty database loads `data/demo` by itself).
 
-### Starter data (`data/demo`, 4,393 pictures)
+### Starter data (`data/demo`, 4,387 pictures)
 
 | Font | Pictures |
 |---|---|
@@ -51,6 +51,16 @@ so it skips about 30% of words). The typed text is the Kashmiri word model's rea
 real model mistakes: 37% in Gulmarg Nastaleeq, 22% Afan Koshur Naksh, 7–16% in the others. About 15%
 of rendered words (known answers) are check items. When `data/demo/manifest.jsonl` grows, a deployed
 app adds the new pictures by itself on its next start; existing pictures and answers are untouched.
+
+### Vowel signs a font does not show
+
+A font can print a vowel sign so faintly, or so close to a stroke, that it cannot be seen; the picture
+then does not match its "true" text. Three safeguards:
+1. `segmentation/mark_check.py`: before a word goes on a rendered page, every sign must add visible
+   ink at that print size (catches e.g. Gulzar, which draws nothing for ٚ). Applied to the starter set too.
+2. A check item that 3 or more people answer, with fewer than half "passing", stops being a check
+   item; nobody keeps a penalty and their answers count as ordinary votes.
+3. The guide tells reviewers to judge only what is visible: a sign they cannot see counts as missing.
 
 ### Keyboard
 
