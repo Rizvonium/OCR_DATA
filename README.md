@@ -19,7 +19,7 @@ combined into a clean dataset for training Kashmiri OCR.
 Reviewers are never told the font, the dataset or which pictures are check items: none of it is sent
 to the browser, and picture file names are hashes.
 
-## Two tasks on the Review screen
+## Three tasks on the Review screen
 
 ### Label chunks (main task)
 
@@ -41,6 +41,18 @@ the rest are single chunks for now and find partners as more pages come in).
 
 Admin → **Chunk labels**; export **Chunk labels (CSV)**: one row per chunk per person, with the text,
 `agree` (how many people gave that chunk the same text), the group and the page.
+
+### Match (the popping game)
+
+A board of 6–16 chunks, mixed from different fonts, whose letters share a skeleton (ر ز ڑ ژ, or
+مو موٗ مۄ): the same base shapes, different dots and signs, each font drawing them its own way
+(`segmentation/make_boards.py`; 157 boards from the starter pages). Tap one chunk, tap every chunk that
+is the **same letters** even if drawn differently, press **Pop**: they burst away. Repeat until the
+board is clear, or press "The rest are all different". Undo takes back the last set.
+
+Each popped set says "these are one and the same" across fonts: the data for mapping every font onto
+one unified form. 1 point per set. Admin → **Match sets**; export **Match sets (CSV)**: one row per
+chunk with its `set_id`, font, the model's reading and who made the set.
 
 ### Check segmentation
 
@@ -67,6 +79,9 @@ npm run import:pages -- out/pages --starter
 ```
 ```bash
 python3 segmentation/group_chunks.py data/groups/manifest.jsonl data/pages/manifest.jsonl --singletons
+```
+```bash
+python3 segmentation/make_boards.py data/match/manifest.jsonl data/pages/manifest.jsonl
 ```
 
 `--starter` adds them to `data/pages/manifest.jsonl`; the deployed app loads them on its next start.

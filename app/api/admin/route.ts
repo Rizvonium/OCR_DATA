@@ -31,6 +31,13 @@ async function answersView(only: string, offset: number, who: string | null) {
 export async function GET(req: Request) {
   if (!isAdmin(req)) return fail("Admin key required.", 401);
   const u = new URL(req.url);
+  if (u.searchParams.get("view") === "match") {
+    const rows = await q(
+      `select a.board_id, a.sets, a.rest, a.updated_at, c.handle, c.code, b.tiles
+       from match_answers a join match_boards b on b.id = a.board_id join contributors c on c.id = a.contributor_id
+       order by a.updated_at desc limit 200`);
+    return json({ rows });
+  }
   if (u.searchParams.get("view") === "groups") {
     // answered groups with every person's decision; "same" = people who decided exactly alike
     const rows = await q(

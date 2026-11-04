@@ -29,6 +29,20 @@ export async function GET(req: Request) {
   const dataset = u.searchParams.get("dataset");
   const day = new Date().toISOString().slice(0, 10);
 
+  if (u.searchParams.get("view") === "match_sets") {
+    // Match game: one row per chunk per popped set: chunks with the same set_id are "one and the same"
+    const rows = await q(
+      `select a.board_id || ':' || c.code || ':' || (s.i - 1) as set_id, x.chunk, t->>'font' as font, t->>'text' as model_reading,
+              t->>'clean_url' as clean_url, c.handle as reviewer, c.code as reviewer_code, a.updated_at as time
+       from match_answers a join contributors c on c.id = a.contributor_id join match_boards b on b.id = a.board_id,
+            jsonb_array_elements(a.sets) with ordinality s(set, i), jsonb_array_elements_text(s.set) x(chunk),
+            jsonb_array_elements(b.tiles) t
+       where t->>'chunk' = x.chunk order by set_id`);
+    for (const r of rows as any[]) if (typeof r.clean_url === "string" && r.clean_url.startsWith("/")) r.clean_url = u.origin + r.clean_url;
+    const cols = ["set_id", "chunk", "font", "model_reading", "reviewer", "reviewer_code", "time", "clean_url"];
+    if (csv) return new Response(toCsv(rows, cols), { headers: { "content-type": "text/csv; charset=utf-8", "content-disposition": `attachment; filename="kashmiri-ocr-match-sets-${day}.csv"` } });
+    return new Response(rows.map((r) => JSON.stringify(r)).join("\n") + "\n", { headers: { "content-type": "application/x-ndjson; charset=utf-8" } });
+  }
   if (u.searchParams.get("view") === "chunk_labels") {
     // the dataset from the group labelling: one row per chunk per person who labelled it
     // (members they marked "not the same" are left out); agree = people who gave this chunk the same text

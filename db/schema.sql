@@ -177,6 +177,27 @@ create table if not exists group_answers (
 );
 create index if not exists group_answers_by_contributor on group_answers (contributor_id, created_at desc);
 
+-- Match game: boards of look-alike chunks mixed across fonts (segmentation/make_boards.py).
+create table if not exists match_boards (
+  id         text primary key,
+  tiles      jsonb not null,   -- [{chunk, clean_url, font, text}]
+  texts      jsonb not null default '[]'::jsonb,
+  created_at timestamptz not null default now()
+);
+-- sets: [[chunk, chunk, ...], ...] each popped together = "one and the same"; rest: left as all different
+create table if not exists match_answers (
+  id             bigint generated always as identity primary key,
+  board_id       text not null references match_boards(id) on delete cascade,
+  contributor_id uuid not null references contributors(id) on delete cascade,
+  sets           jsonb not null,
+  rest           jsonb not null default '[]'::jsonb,
+  ms_spent       int,
+  created_at     timestamptz not null default now(),
+  updated_at     timestamptz not null default now(),
+  unique (board_id, contributor_id)
+);
+create index if not exists match_answers_by_contributor on match_answers (contributor_id, created_at desc);
+
 -- Supabase exposes the public schema through its REST API to anyone holding the publishable key.
 -- Row level security with no policies closes that door; the app's server connects as the
 -- database owner and is not affected.
@@ -190,6 +211,8 @@ alter table pages enable row level security;
 alter table page_answers enable row level security;
 alter table chunk_groups enable row level security;
 alter table group_answers enable row level security;
+alter table match_boards enable row level security;
+alter table match_answers enable row level security;
 
 -- ---------------------------------------------------------------- quality views
 -- Per-person numbers used for trust, the leaderboard and spam flags.
@@ -261,7 +284,8 @@ select f.code, f.handle, f.reviews, f.corrections, f.confirmed_corrections, f.go
        case when f.agreement_n > 0 then round(100.0 * f.agreement_hits / f.agreement_n) end         as agreement,
        (f.reviews + (select count(*) from page_answers pa
                      where pa.contributor_id = f.id and pa.level <> 'page' and pa.verdict <> 'skip')
-                  + (select count(*) from group_answers ga where ga.contributor_id = f.id and ga.verdict <> 'skip'))::int as points,
+                  + (select count(*) from group_answers ga where ga.contributor_id = f.id and ga.verdict <> 'skip')
+                  + (select coalesce(sum(jsonb_array_length(ma.sets)), 0) from match_answers ma where ma.contributor_id = f.id))::int as points,
        f.last_answer_at, f.created_at
 from contributor_flags f
 where f.status <> 'blocked';  -- everyone who registered, except people the admin blocked

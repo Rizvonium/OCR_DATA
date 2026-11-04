@@ -6,7 +6,7 @@ const get = (url: string) => fetch(url, { cache: "no-store" }).then((r) => r.jso
 const post = (body: unknown) => fetch("/api/admin", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) }).then((r) => r.json());
 const day = (s?: string | null) => (s ? new Date(s).toLocaleString(undefined, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : "—");
 const VERDICT: Record<string, string> = { correct: "✓ correct", incorrect: "✗ incorrect", skip: "skipped" };
-type Tab = "people" | "groups" | "pages" | "answers" | "photos" | "data";
+type Tab = "people" | "groups" | "match" | "pages" | "answers" | "photos" | "data";
 
 export default function Admin() {
   const [state, setState] = useState<"loading" | "out" | "in">("loading");
@@ -46,12 +46,13 @@ export default function Admin() {
         <button className="btn ghost" onClick={signOut}>Sign out of admin</button>
       </div>
       <div className="tabs admin-tabs">
-        {([["people", "People"], ["groups", "Chunk labels"], ["pages", "Segmentation"], ["answers", "Word answers"], ["photos", "Photos"], ["data", "Data & export"]] as [Tab, string][]).map(([t, l]) => (
+        {([["people", "People"], ["groups", "Chunk labels"], ["match", "Match sets"], ["pages", "Segmentation"], ["answers", "Word answers"], ["photos", "Photos"], ["data", "Data & export"]] as [Tab, string][]).map(([t, l]) => (
           <button key={t} aria-pressed={tab === t} onClick={() => setTab(t)}>{l}</button>
         ))}
       </div>
       {tab === "people" && <People onOpen={openPerson} />}
       {tab === "groups" && <Groups />}
+      {tab === "match" && <Matches />}
       {tab === "pages" && <Pages />}
       {tab === "answers" && <Answers who={who} clearWho={() => setWho(null)} />}
       {tab === "photos" && <Photos />}
@@ -103,6 +104,40 @@ function People({ onOpen }: { onOpen: (code: string) => void }) {
             ))}</tbody>
           </table>
         )}
+      </div>
+    </>
+  );
+}
+
+function Matches() {
+  const [rows, setRows] = useState<any[] | null>(null);
+  useEffect(() => { get("/api/admin?view=match").then((r) => setRows(r.rows)); }, []);
+  if (!rows) return <p className="muted">Loading…</p>;
+  const url = (b: any, id: string) => b.tiles.find((t: any) => t.chunk === id)?.clean_url;
+  return (
+    <>
+      <p className="muted small">Each row is one board one person played; each coloured set was popped together as “one and the same”, across fonts.
+        {" "}<a href="/api/export?format=csv&view=match_sets">Download match sets (CSV)</a></p>
+      <div className="card" style={{ overflowX: "auto" }}>
+        <table>
+          <thead><tr><th>Person</th><th>Sets popped</th><th>Left as different</th><th>When</th></tr></thead>
+          <tbody>{rows.map((r, i) => (
+            <tr key={i}>
+              <td><b>{r.handle}</b><br /><span className="mono muted small">{r.board_id}</span></td>
+              <td>{r.sets.map((s: string[], k: number) => (
+                <div key={k} className="mini-tiles" style={{ marginBottom: 4 }}>{s.map((id) => (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img key={id} src={url(r, id)} alt="" style={{ borderColor: ["#c0502a", "#2f7a4a", "#3b82c4", "#8b5cf6", "#d4a017", "#d9468f"][k % 6], borderWidth: 2 }} />
+                ))}</div>
+              ))}</td>
+              <td><div className="mini-tiles">{r.rest.map((id: string) => (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img key={id} src={url(r, id)} alt="" />
+              ))}</div></td>
+              <td className="small">{day(r.updated_at)}</td>
+            </tr>
+          ))}</tbody>
+        </table>
       </div>
     </>
   );
@@ -283,6 +318,7 @@ function Data() {
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
           <a className="btn primary" href={ex("format=csv&view=answers")}>Answers sheet (CSV): one row per answer</a>
           <a className="btn primary" href={ex("format=csv&view=chunk_labels")}>Chunk labels (CSV): the labelled dataset</a>
+          <a className="btn" href={ex("format=csv&view=match_sets")}>Match sets (CSV): same across fonts</a>
           <a className="btn" href={ex("format=csv&view=page_answers")}>Segmentation decisions (CSV)</a>
           <a className="btn" href={ex("format=csv")}>Pictures sheet (CSV)</a>
           <a className="btn" href={ex("status=verified,corrected")}>Training data (JSONL): verified + corrected</a>

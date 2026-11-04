@@ -62,6 +62,7 @@ async function connect(): Promise<Query> {
   await seedStarterData(query);
   await seedStarterPages(query);
   await seedStarterGroups(query);
+  await seedStarterBoards(query);
   return query;
 }
 
@@ -167,6 +168,28 @@ async function seedStarterGroups(query: Query) {
     `delete from chunk_groups g where not exists (select 1 from jsonb_array_elements_text(($1::text)::jsonb) m(id) where m.id = g.id)
        and not exists (select 1 from group_answers a where a.group_id = g.id)`, [JSON.stringify(rows.map((r) => r.id))]);
   await query("insert into app_meta (k, v) values ('starter_groups', $1) on conflict (k) do update set v = excluded.v", [hash]);
+}
+
+// Loads data/match/manifest.jsonl (Match game boards) when the file changes.
+async function seedStarterBoards(query: Query) {
+  if (process.env.SEED_DEMO === "0") return;
+  const p = file("data/match/manifest.jsonl");
+  if (!fs.existsSync(p)) return;
+  const text = fs.readFileSync(p, "utf8");
+  const hash = crypto.createHash("sha256").update(text).digest("hex");
+  const [seen] = await query<{ v: string }>("select v from app_meta where k = 'starter_boards'");
+  if (seen?.v === hash) return;
+  const rows = text.split("\n").filter(Boolean).map((l) => JSON.parse(l)).map((b) => ({ id: b.id, tiles: b.tiles, texts: b.texts || [] }));
+  for (let i = 0; i < rows.length; i += 200) {
+    await query(
+      `insert into match_boards (id, tiles, texts) select id, tiles, texts from jsonb_to_recordset(($1::text)::jsonb) as x(id text, tiles jsonb, texts jsonb)
+       on conflict (id) do update set tiles = excluded.tiles, texts = excluded.texts
+         where not exists (select 1 from match_answers a where a.board_id = excluded.id)`, [JSON.stringify(rows.slice(i, i + 200))]);
+  }
+  await query(
+    `delete from match_boards b where not exists (select 1 from jsonb_array_elements_text(($1::text)::jsonb) m(id) where m.id = b.id)
+       and not exists (select 1 from match_answers a where a.board_id = b.id)`, [JSON.stringify(rows.map((r) => r.id))]);
+  await query("insert into app_meta (k, v) values ('starter_boards', $1) on conflict (k) do update set v = excluded.v", [hash]);
 }
 
 export function db(): Promise<Query> {

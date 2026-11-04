@@ -129,7 +129,8 @@ export async function myStats(cid: string) {
             (select count(distinct d)::int from (
                select date_trunc('day', created_at) d from answers where contributor_id = f.id
                union select date_trunc('day', created_at) from page_answers where contributor_id = f.id
-               union select date_trunc('day', created_at) from group_answers where contributor_id = f.id) days) as days
+               union select date_trunc('day', created_at) from group_answers where contributor_id = f.id
+               union select date_trunc('day', created_at) from match_answers where contributor_id = f.id) days) as days
      from contributor_flags f left join leaderboard l on l.code = f.code where f.id = $1`, [cid]);
   if (!s) return null;
   s.corrections = (s.corrections || 0) + (s.page_corrections || 0);

@@ -322,3 +322,16 @@ tr.me td{background:var(--accent-soft)}
 .mini-tiles{display:flex;flex-wrap:wrap;gap:3px;max-width:260px}
 .mini-tiles img{height:28px;background:#fff;border-radius:3px;border:1px solid var(--line)}
 .mini-tiles img.odd{border-color:var(--accent);opacity:.5}
+/* ------------------------------------------------------------ Match game */
+.match-grid{position:relative;display:grid;grid-template-columns:repeat(4,1fr);gap:10px;padding:16px;background:var(--paper)}
+@media (min-width:640px){.match-grid{grid-template-columns:repeat(6,1fr)}}
+.mtile{aspect-ratio:1;border-radius:14px;border:3px solid transparent;background:#fff;display:grid;place-items:center;padding:8px;box-shadow:0 3px 10px rgba(31,27,22,.14);transition:transform .15s var(--ease),border-color .15s,box-shadow .15s}
+.mtile img{max-width:100%;max-height:100%;object-fit:contain}
+.mtile:active{transform:scale(.94)}
+.mtile.first{transform:scale(1.06)}
+.mtile.picked{transform:scale(1.03)}
+.mtile.gone{background:transparent;box-shadow:none}
+.mtile.popping{animation:popaway .52s var(--ease) forwards}
+@keyframes popaway{0%{transform:scale(1)}35%{transform:scale(1.22) rotate(-4deg)}100%{transform:scale(0) rotate(12deg);opacity:0}}
+.cheer{position:absolute;left:50%;top:40%;transform:translate(-50%,-50%);font:800 40px var(--ui);pointer-events:none;animation:cheer .52s var(--ease) forwards;text-shadow:0 2px 0 #fff}
+@keyframes cheer{0%{opacity:0;transform:translate(-50%,-30%) scale(.6)}40%{opacity:1;transform:translate(-50%,-55%) scale(1.1)}100%{opacity:0;transform:translate(-50%,-80%) scale(1)}}
