@@ -29,6 +29,20 @@ export async function GET(req: Request) {
   const dataset = u.searchParams.get("dataset");
   const day = new Date().toISOString().slice(0, 10);
 
+  if (u.searchParams.get("view") === "page_answers") {
+    // every decision on the guided page review: one row per person per step
+    const rows = await q(
+      `select a.updated_at as time, c.handle as reviewer, c.code as reviewer_code, a.page_id, p.font, a.level, a.line, a.chunk,
+              a.verdict, a.correction, a.edit->>'shown' as shown_text, a.edit, round(a.ms_spent / 1000.0, 1) as seconds, p.image_url
+       from page_answers a join contributors c on c.id = a.contributor_id join pages p on p.id = a.page_id
+       where a.level <> 'page' order by a.page_id, a.level, a.line, a.chunk, a.updated_at`);
+    for (const r of rows as any[]) if (typeof r.image_url === "string" && r.image_url.startsWith("/")) r.image_url = u.origin + r.image_url;
+    if (csv) {
+      const cols = ["time", "reviewer", "reviewer_code", "page_id", "font", "level", "line", "chunk", "verdict", "correction", "shown_text", "edit", "seconds", "image_url"];
+      return new Response(toCsv(rows, cols), { headers: { "content-type": "text/csv; charset=utf-8", "content-disposition": `attachment; filename="kashmiri-ocr-page-answers-${day}.csv"` } });
+    }
+    return new Response(rows.map((r) => JSON.stringify(r)).join("\n") + "\n", { headers: { "content-type": "application/x-ndjson; charset=utf-8", "content-disposition": `attachment; filename="kashmiri-ocr-page-answers-${day}.jsonl"` } });
+  }
   if (view === "answers") {
     const rows = await q(
       `select a.created_at as time, k.handle as reviewer, k.code as reviewer_code,

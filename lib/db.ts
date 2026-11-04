@@ -60,6 +60,7 @@ async function connect(): Promise<Query> {
     query = (async (text, params = []) => (await db.query(text, params as any[])).rows as any) as Query;
   }
   await seedStarterData(query);
+  await seedStarterPages(query);
   return query;
 }
 
@@ -106,6 +107,37 @@ async function seedStarterData(query: Query) {
     `update samples s set is_gold = false where s.is_gold and s.dataset = any($1::text[])
        and not exists (select 1 from jsonb_array_elements_text(($2::text)::jsonb) m(id) where m.id = s.id)`, [datasets, ids]);
   await query("insert into app_meta (k, v) values ('starter_data', $1) on conflict (k) do update set v = excluded.v", [hash]);
+}
+
+// Loads data/pages/manifest.jsonl (whole pages for the guided review) when the file changes; pages that
+// left the file are deleted only if nobody has worked on them.
+async function seedStarterPages(query: Query) {
+  if (process.env.SEED_DEMO === "0") return;
+  const p = file("data/pages/manifest.jsonl");
+  if (!fs.existsSync(p)) return;
+  const text = fs.readFileSync(p, "utf8");
+  const hash = crypto.createHash("sha256").update(text).digest("hex");
+  const [seen] = await query<{ v: string }>("select v from app_meta where k = 'starter_pages'");
+  if (seen?.v === hash) return;
+  const rows = text.split("\n").filter(Boolean).map((l) => JSON.parse(l)).map((r) => ({
+    id: r.id, dataset: r.dataset, font: r.font ?? null, image_url: r.image_url, heat_url: r.heat_url ?? null,
+    width: r.width, height: r.height, lines: r.lines, source_ref: r.source_ref || {},
+  }));
+  for (let i = 0; i < rows.length; i += 100) {
+    await query(
+      `insert into pages (id, dataset, font, image_url, heat_url, width, height, lines, source_ref)
+       select id, dataset, font, image_url, heat_url, width, height, lines, source_ref
+       from jsonb_to_recordset(($1::text)::jsonb) as x(id text, dataset text, font text, image_url text, heat_url text,
+         width int, height int, lines jsonb, source_ref jsonb)
+       on conflict (id) do update set image_url = excluded.image_url, heat_url = excluded.heat_url, lines = excluded.lines
+         where not exists (select 1 from page_answers a where a.page_id = excluded.id)`, [JSON.stringify(rows.slice(i, i + 100))]);
+  }
+  const datasets = [...new Set(rows.map((r) => r.dataset))];
+  await query(
+    `delete from pages p where p.dataset = any($1::text[])
+       and not exists (select 1 from jsonb_array_elements_text(($2::text)::jsonb) m(id) where m.id = p.id)
+       and not exists (select 1 from page_answers a where a.page_id = p.id)`, [datasets, JSON.stringify(rows.map((r) => r.id))]);
+  await query("insert into app_meta (k, v) values ('starter_pages', $1) on conflict (k) do update set v = excluded.v", [hash]);
 }
 
 export function db(): Promise<Query> {

@@ -9,7 +9,8 @@ combined into a clean dataset for training Kashmiri OCR.
 
 | | |
 |---|---|
-| **Review** | picture, typed text, two buttons. Keys: `C` correct, `X` incorrect, `S` skip. If incorrect: the text box starts with the typed text so you fix one letter; a complete on-screen Kashmiri keyboard; a tick box for "the box itself is wrong". |
+| **Review** | the guided page review (below). |
+| **Quick check** (`/words`) | one word picture, typed text, two buttons. Keys: `C` correct, `X` incorrect, `S` skip. If incorrect: the text box starts with the typed text so you fix one letter; a complete on-screen Kashmiri keyboard; a tick box for "the box itself is wrong". |
 | **Leaderboard** | points, reviews, this week / all time, and the progress of the whole dataset. |
 | **Add photos** | photograph Kashmiri pages; they are checked for blur and later cut into words. |
 | **Profile** | your stats; sign out on this device. |
@@ -17,6 +18,37 @@ combined into a clean dataset for training Kashmiri OCR.
 
 Reviewers are never told the font, the dataset or which pictures are check items: none of it is sent
 to the browser, and picture file names are hashes.
+
+## Guided page review (the main Review screen)
+
+A page goes through three levels, top to bottom, always with the context on top and the unit below:
+
+1. **Lines** — the page with the lines the segmenter found as numbered bands. *Are the lines correct?*
+   If not: tap inside a band to split it, tap between two bands to join them (Zoom for precision).
+2. **Chunks of each line** — the page with that line in blue, and the line with its chunks (pieces split at
+   the wider gaps between words). *Nothing missing, every dot inside its box?* If not: ✂ split, ⊕ join,
+   ✕ remove a speck.
+3. **Text of each chunk** — the line with that chunk in blue, and the chunk large with the word model's
+   reading. *Does the text match exactly?* If not: type it on the Kashmiri keyboard. "The box is wrong"
+   jumps back to fixing that line's chunks.
+
+Then the next chunk, line and page. **Heat map** shows the cleaned ink (shadow and paper removed) the
+segmenter works on. ‹ Back changes any earlier decision; a reload resumes where you were. Every decision
+is saved with who made it (`page_answers`), counts 1 point and earns badges (🌱 10 answers, 🍂 100,
+🍁 500, 🏔️ 1,000, 📄 first page, 📚 10 pages, ✍️ 10 corrections, 🖋️ 100, 📅 3 days, 📷 5 photos).
+Admin → **Pages** shows each page's decisions per person, and how many people decided exactly alike.
+
+Pages to review come from `segmentation/make_pages.py` (segmenter + word model + heat map):
+
+```bash
+python3 segmentation/make_pages.py PAGES_DIR out/pages --dataset book1 --font "Gulmarg Nastaleeq"
+```
+```bash
+npm run import:pages -- out/pages --starter
+```
+
+`--starter` adds them to `data/pages/manifest.jsonl`; the deployed app loads them on its next start.
+18 starter pages (3 in each of six fonts, 263 lines, 1,079 chunks) are included.
 
 ## Run it on your computer
 

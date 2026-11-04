@@ -2,7 +2,7 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   serverExternalPackages: ["@electric-sql/pglite", "postgres"],
-  outputFileTracingIncludes: { "/**/*": ["./db/schema.sql", "./data/demo/manifest.jsonl"] },
+  outputFileTracingIncludes: { "/**/*": ["./db/schema.sql", "./data/demo/manifest.jsonl", "./data/pages/manifest.jsonl"] },
   images: { unoptimized: true },
 };
 

@@ -31,6 +31,34 @@ async function answersView(only: string, offset: number, who: string | null) {
 export async function GET(req: Request) {
   if (!isAdmin(req)) return fail("Admin key required.", 401);
   const u = new URL(req.url);
+  if (u.searchParams.get("view") === "pages") {
+    // each page: how many people worked on / finished it, and how they judged the lines, chunks and texts
+    const rows = await q(
+      `select p.id, p.font, p.image_url, jsonb_array_length(p.lines) as lines,
+              count(distinct a.contributor_id)::int as people,
+              count(distinct a.contributor_id) filter (where a.level = 'page')::int as finished,
+              count(*) filter (where a.level = 'lines' and a.verdict = 'correct')::int as lines_ok,
+              count(*) filter (where a.level = 'lines' and a.verdict = 'incorrect')::int as lines_fixed,
+              count(*) filter (where a.level = 'chunks' and a.verdict = 'correct')::int as chunks_ok,
+              count(*) filter (where a.level = 'chunks' and a.verdict = 'incorrect')::int as chunks_fixed,
+              count(*) filter (where a.level = 'text' and a.verdict = 'correct')::int as text_ok,
+              count(*) filter (where a.level = 'text' and a.verdict = 'incorrect')::int as text_fixed,
+              max(a.updated_at) as last
+       from pages p left join page_answers a on a.page_id = p.id
+       group by p.id order by count(a.id) desc, p.id limit 500`);
+    return json({ rows });
+  }
+  if (u.searchParams.get("view") === "page") {
+    // every decision on one page, by person; texts that 2+ people typed the same way are agreed
+    const id = u.searchParams.get("id");
+    const rows = await q(
+      `select a.level, a.line, a.chunk, a.verdict, a.correction, a.edit, a.updated_at, c.handle, c.code,
+              (select count(*)::int from page_answers b where b.page_id = a.page_id and b.level = a.level and b.line = a.line
+                 and b.chunk = a.chunk and b.verdict = a.verdict and coalesce(b.correction, '') = coalesce(a.correction, '')) as same
+       from page_answers a join contributors c on c.id = a.contributor_id
+       where a.page_id = $1 and a.level <> 'page' order by a.level = 'text', a.line, a.chunk, c.handle`, [id]);
+    return json({ rows });
+  }
   if (u.searchParams.get("view") === "uploads") {
     const status = u.searchParams.get("status") || "new";
     const rows = await q(

@@ -9,7 +9,8 @@
     "db:setup": "node scripts/db-setup.mjs",
     "import": "node scripts/import-samples.mjs",
     "simulate": "node tests/simulate.mjs",
-    "uploads:download": "node scripts/download-uploads.mjs"
+    "uploads:download": "node scripts/download-uploads.mjs",
+    "import:pages": "node scripts/import-pages.mjs"
   },
   "dependencies": {
     "@electric-sql/pglite": "0.5.15",

@@ -1,4 +1,5 @@
 import { q } from "@/lib/db";
+import { badgesFor } from "@/lib/badges";
 import { json } from "@/lib/http";
 
 export const dynamic = "force-dynamic";
@@ -6,8 +7,14 @@ export const dynamic = "force-dynamic";
 export async function GET(req: Request) {
   const period = new URL(req.url).searchParams.get("period");
   const rows = await q(
-    `select code, handle, points, reviews::int, confirmed_corrections::int, check_accuracy::int, agreement::int, last_answer_at
-     from leaderboard order by points desc nulls last, reviews desc, created_at limit 2000`);
+    `select l.code, l.handle, l.points, l.reviews::int, l.confirmed_corrections::int, l.check_accuracy::int, l.agreement::int, l.last_answer_at,
+            (select count(*)::int from page_answers pa where pa.contributor_id = c.id and pa.level = 'page') as pages,
+            l.corrections::int + (select count(*)::int from page_answers pa where pa.contributor_id = c.id and pa.correction is not null) as corrections,
+            (select count(*)::int from uploads u where u.contributor_id = c.id) as photos,
+            (select count(distinct d)::int from (select date_trunc('day', created_at) d from answers where contributor_id = c.id
+               union select date_trunc('day', created_at) from page_answers where contributor_id = c.id) x) as days
+     from leaderboard l join contributors c on c.code = l.code order by l.points desc nulls last, l.reviews desc, l.created_at limit 2000`);
+  for (const r of rows as any[]) r.badges = badgesFor({ points: r.points || 0, pages: r.pages, corrections: r.corrections, days: r.days, photos: r.photos }).map((b) => b.icon + " " + b.name);
   // weekly view: same trust rules, only this week's reviews
   if (period === "week") {
     const week = await q<{ code: string; n: number }>(

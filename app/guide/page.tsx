@@ -3,8 +3,15 @@ export const metadata = { title: "How to judge · Kashmiri OCR Data" };
 export default function Guide() {
   return (
     <div className="prose">
-      <h1>How to judge a picture</h1>
-      <p className="lede">Each picture was cut out of a printed page by a computer program, then paired with typed text. Your job is to say whether the pair is right.</p>
+      <h1>How to review</h1>
+      <p className="lede">You go through a page in three steps. A computer program found the lines, cut each line into chunks (the bigger gaps between words) and read each chunk. You check each step and fix what is wrong.</p>
+      <ol>
+        <li><b>Lines.</b> Each coloured band should hold exactly one line, with all its dots and vowel signs. If not: tap inside a band to split it, tap between two bands to join them.</li>
+        <li><b>Chunks of each line.</b> Each box should hold one chunk, nothing cut off, nothing outside. If not: ✂ split a box where it should be cut, ⊕ join two neighbouring boxes, ✕ remove a box with only a speck.</li>
+        <li><b>Text of each chunk.</b> Does the typed text match the chunk exactly? If not, type the right text; if you cannot, say so.</li>
+      </ol>
+      <p>‹ Back takes you to any earlier step to change your answer. Each decision is one point. The rules below say what counts as a match.</p>
+      <h2 style={{ marginTop: 26 }}>Does the text match?</h2>
 
       <h2>Correct</h2>
       <p>Press <b>Correct</b> only when the typed text says <i>exactly</i> what is printed: the same letters, in the same order, with the same vowel signs.</p>

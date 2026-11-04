@@ -6,7 +6,7 @@ const get = (url: string) => fetch(url, { cache: "no-store" }).then((r) => r.jso
 const post = (body: unknown) => fetch("/api/admin", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) }).then((r) => r.json());
 const day = (s?: string | null) => (s ? new Date(s).toLocaleString(undefined, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : "—");
 const VERDICT: Record<string, string> = { correct: "✓ correct", incorrect: "✗ incorrect", skip: "skipped" };
-type Tab = "people" | "answers" | "photos" | "data";
+type Tab = "people" | "pages" | "answers" | "photos" | "data";
 
 export default function Admin() {
   const [state, setState] = useState<"loading" | "out" | "in">("loading");
@@ -46,11 +46,12 @@ export default function Admin() {
         <button className="btn ghost" onClick={signOut}>Sign out of admin</button>
       </div>
       <div className="tabs admin-tabs">
-        {([["people", "People"], ["answers", "Answers"], ["photos", "Photos"], ["data", "Data & export"]] as [Tab, string][]).map(([t, l]) => (
+        {([["people", "People"], ["pages", "Pages"], ["answers", "Word answers"], ["photos", "Photos"], ["data", "Data & export"]] as [Tab, string][]).map(([t, l]) => (
           <button key={t} aria-pressed={tab === t} onClick={() => setTab(t)}>{l}</button>
         ))}
       </div>
       {tab === "people" && <People onOpen={openPerson} />}
+      {tab === "pages" && <Pages />}
       {tab === "answers" && <Answers who={who} clearWho={() => setWho(null)} />}
       {tab === "photos" && <Photos />}
       {tab === "data" && <Data />}
@@ -102,6 +103,54 @@ function People({ onOpen }: { onOpen: (code: string) => void }) {
           </table>
         )}
       </div>
+    </>
+  );
+}
+
+const LEVEL: Record<string, string> = { lines: "Lines of the page", chunks: "Chunks of line", text: "Text of chunk" };
+function Pages() {
+  const [rows, setRows] = useState<any[] | null>(null);
+  const [open, setOpen] = useState<string | null>(null);
+  const [detail, setDetail] = useState<any[] | null>(null);
+  useEffect(() => { get("/api/admin?view=pages").then((r) => setRows(r.rows)); }, []);
+  useEffect(() => { setDetail(null); if (open) get(`/api/admin?view=page&id=${encodeURIComponent(open)}`).then((r) => setDetail(r.rows)); }, [open]);
+  return (
+    <>
+      <p className="muted small">Guided page review. For each page: how many people worked on it, and their decisions on lines, chunks and texts. Open a page to see every person’s decisions; <b>same</b> counts how many people decided exactly alike.</p>
+      <div className="card" style={{ overflowX: "auto", marginBottom: 18 }}>
+        {!rows ? <p className="muted" style={{ padding: 16 }}>Loading…</p> : (
+          <table>
+            <thead><tr><th>Page</th><th className="num">Lines</th><th className="num">People</th><th className="num">Finished</th><th className="num">Lines ✓/fixed</th><th className="num">Chunks ✓/fixed</th><th className="num">Texts ✓/fixed</th><th></th></tr></thead>
+            <tbody>{rows.map((p) => (
+              <tr key={p.id} className={open === p.id ? "me" : ""}>
+                <td><span className="mono">{p.id}</span><br /><span className="small muted">{p.font}</span></td>
+                <td className="num">{p.lines}</td><td className="num">{p.people}</td><td className="num">{p.finished}</td>
+                <td className="num">{p.lines_ok}/{p.lines_fixed}</td><td className="num">{p.chunks_ok}/{p.chunks_fixed}</td><td className="num">{p.text_ok}/{p.text_fixed}</td>
+                <td>{p.people > 0 && <button className="btn" style={{ height: 30, padding: "0 10px" }} onClick={() => setOpen(open === p.id ? null : p.id)}>{open === p.id ? "Close" : "Decisions"}</button>}</td>
+              </tr>
+            ))}</tbody>
+          </table>
+        )}
+      </div>
+      {open && (
+        <div className="card" style={{ overflowX: "auto" }}>
+          {!detail ? <p className="muted" style={{ padding: 16 }}>Loading…</p> : (
+            <table>
+              <thead><tr><th>Step</th><th>Person</th><th>Decision</th><th>Typed / shown</th><th className="num">Same</th><th>When</th></tr></thead>
+              <tbody>{detail.map((d, i) => (
+                <tr key={i}>
+                  <td className="small">{LEVEL[d.level]}{d.line >= 0 ? ` ${d.line + 1}` : ""}{d.chunk >= 0 ? ` · chunk ${d.chunk + 1}` : ""}</td>
+                  <td><b>{d.handle}</b> <span className="mono muted small">{d.code}</span></td>
+                  <td>{VERDICT[d.verdict] ?? d.verdict}{d.verdict === "incorrect" && d.level === "lines" ? ` → ${d.edit?.lines?.length} lines` : ""}{d.verdict === "incorrect" && d.level === "chunks" ? ` → ${d.edit?.chunks?.length} chunks` : ""}</td>
+                  <td className="ks" style={{ fontSize: 20 }}>{d.correction || d.edit?.shown || ""}</td>
+                  <td className="num">{d.same}</td>
+                  <td className="small">{day(d.updated_at)}</td>
+                </tr>
+              ))}</tbody>
+            </table>
+          )}
+        </div>
+      )}
     </>
   );
 }
@@ -200,6 +249,7 @@ function Data() {
         <h3>Download</h3>
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
           <a className="btn primary" href={ex("format=csv&view=answers")}>Answers sheet (CSV): one row per answer</a>
+          <a className="btn primary" href={ex("format=csv&view=page_answers")}>Page review sheet (CSV): every decision</a>
           <a className="btn" href={ex("format=csv")}>Pictures sheet (CSV)</a>
           <a className="btn" href={ex("status=verified,corrected")}>Training data (JSONL): verified + corrected</a>
           <a className="btn" href={ex("status=all")}>Everything with every answer (JSONL)</a>

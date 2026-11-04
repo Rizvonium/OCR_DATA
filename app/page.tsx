@@ -1,10 +1,12 @@
 "use client";
-import { useApp } from "@/components/AppState";
-import { Join } from "@/components/Join";
-import { Reviewer } from "@/components/Reviewer";
+import { PageReview } from "@/components/PageReview";
 
+// Main review: whole pages, step by step (lines -> chunks -> text). Single words: /words.
 export default function Home() {
-  const { me, loaded } = useApp();
-  if (!loaded) return null;
-  return me ? <Reviewer /> : <Join />;
+  return (
+    <>
+      <PageReview />
+      <p className="muted small" style={{ textAlign: "center", marginTop: 14 }}><a href="/words">Quick check of single words instead ›</a></p>
+    </>
+  );
 }

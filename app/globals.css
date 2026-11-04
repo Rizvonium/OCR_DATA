@@ -287,3 +287,18 @@ tr.me td{background:var(--accent-soft)}
 .past-note.locked{background:var(--warn-soft);color:var(--warn)}
 .past-note .ks{font-size:20px}
 @media (max-width:640px){.status-line{gap:8px;font-size:13px}.navbtn{padding:0 6px}}
+/* ------------------------------------------------------------ guided page review */
+.pv{background:var(--paper);overflow:auto;max-height:70vh}
+.pv svg{display:block;width:100%;height:auto}
+.pv.zoom svg{width:220%}
+.lv{background:var(--paper);overflow-x:auto;direction:rtl;padding:6px 0}
+.lv svg{display:block;direction:ltr;margin:0 auto}
+.cv{display:block;width:100%;max-width:560px;height:200px;background:#fff;border-radius:6px;box-shadow:0 8px 26px rgba(31,27,22,.18)}
+.head-tools{margin-left:auto;display:flex;gap:6px}
+.status-line .where{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:600;color:var(--text)}
+.badges{display:flex;flex-wrap:wrap;gap:6px;justify-content:center}
+.badge{display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:999px;background:var(--accent-soft);color:var(--accent-text);font-size:13px;font-weight:600}
+.fix p.small{margin:0 0 8px}
+.pv.small{max-height:200px}
+.pv.small svg{pointer-events:none}
+.ctx-label{font-size:12px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);padding:8px 18px 4px;background:var(--sunken)}
