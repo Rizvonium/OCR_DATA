@@ -33,7 +33,7 @@ npm run dev
 Open http://localhost:3000. Without `DATABASE_URL` the app uses a built-in local Postgres (PGlite, in
 `.data/`), so nothing else is needed (the import step is optional: an empty database loads `data/demo` by itself).
 
-### Starter data (`data/demo`, 4,387 pictures)
+### Starter data (`data/demo`, 4,103 pictures)
 
 | Font | Pictures |
 |---|---|
@@ -53,15 +53,25 @@ real model mistakes: 37% in Gulmarg Nastaleeq, 22% Afan Koshur Naksh, 7–16% in
 of rendered words (known answers) are check items. When `data/demo/manifest.jsonl` grows, a deployed
 app adds the new pictures by itself on its next start; existing pictures and answers are untouched.
 
-### Vowel signs a font does not show
+### Letters and signs a font cannot show
 
-A font can print a vowel sign so faintly, or so close to a stroke, that it cannot be seen; the picture
-then does not match its "true" text. Three safeguards:
-1. `segmentation/mark_check.py`: before a word goes on a rendered page, every sign must add visible
-   ink at that print size (catches e.g. Gulzar, which draws nothing for ٚ). Applied to the starter set too.
-2. A check item that 3 or more people answer, with fewer than half "passing", stops being a check
-   item; nobody keeps a penalty and their answers count as ordinary votes.
-3. The guide tells reviewers to judge only what is visible: a sign they cannot see counts as missing.
+Fonts differ a lot in Kashmiri support. `segmentation/mark_check.py` checks every word before it goes on
+a rendered page, at the real print size: each Kashmiri letter must look different from its look-alikes
+(ٲ vs أ/ا, ۄ vs و, ؠ vs ی ...), and each vowel sign must add ink that stands clear of the letters.
+Found in the six fonts:
+
+| Font | Cannot show |
+|---|---|
+| Gulmarg Nastaleeq | ۄ ؠ ٳ (missing); ٟ breaks the word; ٕ under some letters |
+| Afan Koshur Naksh | ؠ ٟ (missing); ٲ looks like أ, آ like ا, ۅ like و |
+| Narqalam | ٳ ٟ (missing); ۄ looks like و |
+| Noto Nastaliq Urdu | (nothing found) |
+| Noto Naskh Arabic | ٲ looks like أ; ٕ under ھ hidden in the stroke; ٟ invisible |
+| Gulzar | ٲ ٳ ۄ ۆ ۅ ؠ ۍ ێ ۓ (missing); ٚ not drawn; ٗ ُ ٕ drawn over letters |
+
+284 starter pictures failed and were removed. Because pixels cannot judge everything a reader sees, a
+check item that most reviewers "fail" (3+ answers, under half passing) also stops being a check item and
+their penalties are cleared, and the guide tells reviewers to judge only what is visible.
 
 ### Keyboard
 
