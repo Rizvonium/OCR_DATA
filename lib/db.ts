@@ -59,20 +59,24 @@ async function connect(): Promise<Query> {
     await db.exec(schema);
     query = (async (text, params = []) => (await db.query(text, params as any[])).rows as any) as Query;
   }
-  await seedIfEmpty(query);
+  await seedStarterData(query);
   return query;
 }
 
 // Same choice of check items as scripts/import-samples.mjs (FNV hash of the id, 15%).
 const fnv = (s: string) => { let h = 2166136261; for (const c of s) h = Math.imul(h ^ c.charCodeAt(0), 16777619); return (h >>> 0) / 2 ** 32; };
 
-async function seedIfEmpty(query: Query) {
+// Loads data/demo/manifest.jsonl: everything into an empty database, and afterwards only pictures
+// that are new in the file (when it changes), never touching answers or existing pictures.
+async function seedStarterData(query: Query) {
   if (process.env.SEED_DEMO === "0") return;
-  const [{ n }] = await query<{ n: number }>("select count(*)::int as n from samples");
-  if (n > 0) return;
   const p = file("data/demo/manifest.jsonl");
   if (!fs.existsSync(p)) return;
-  const recs = fs.readFileSync(p, "utf8").split("\n").filter(Boolean).map((l) => JSON.parse(l));
+  const text = fs.readFileSync(p, "utf8");
+  const hash = crypto.createHash("sha256").update(text).digest("hex");
+  const [seen] = await query<{ v: string }>("select v from app_meta where k = 'starter_data'");
+  if (seen?.v === hash) return;
+  const recs = text.split("\n").filter(Boolean).map((l) => JSON.parse(l));
   const rows = recs.map((r) => {
     const gold = typeof r.truth === "string" && r.kind !== "line" && fnv(r.id) < 0.15;
     return {
@@ -90,6 +94,7 @@ async function seedIfEmpty(query: Query) {
          proposed_text text, source_ref jsonb, is_gold boolean, gold_verdict text, gold_text text)
        on conflict (id) do nothing`, [JSON.stringify(rows.slice(i, i + 1000))]);
   }
+  await query("insert into app_meta (k, v) values ('starter_data', $1) on conflict (k) do update set v = excluded.v", [hash]);
 }
 
 export function db(): Promise<Query> {

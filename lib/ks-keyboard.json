@@ -1,0 +1,882 @@
+{
+"sources": [
+"kashmiri-ocr.zip",
+"master_50k_words_manifest.json",
+"kashmiri_headwords.txt",
+"manifest.jsonl"
+],
+"keys": [
+{
+"c": "ِ",
+"group": "signs",
+"n": 21657,
+"name": "Kasra",
+"code": "U+0650",
+"label": "zer"
+},
+{
+"c": "ٕ",
+"group": "signs",
+"n": 20769,
+"name": "Hamza Below",
+"code": "U+0655",
+"label": "hamza below ɨ"
+},
+{
+"c": "ُ",
+"group": "signs",
+"n": 16932,
+"name": "Damma",
+"code": "U+064F",
+"label": "pesh"
+},
+{
+"c": "َ",
+"group": "signs",
+"n": 16363,
+"name": "Fatha",
+"code": "U+064E",
+"label": "zabar"
+},
+{
+"c": "ٛ",
+"group": "signs",
+"n": 5845,
+"name": "Vowel Sign Inverted Small V Above",
+"code": "U+065B",
+"label": "inverted v ʲ/ʷ"
+},
+{
+"c": "ٔ",
+"group": "signs",
+"n": 4698,
+"name": "Hamza Above",
+"code": "U+0654",
+"label": "hamza ə"
+},
+{
+"c": "ٚ",
+"group": "signs",
+"n": 4265,
+"name": "Vowel Sign Small V Above",
+"code": "U+065A",
+"label": "small v e/o"
+},
+{
+"c": "ٗ",
+"group": "signs",
+"n": 3629,
+"name": "Inverted Damma",
+"code": "U+0657",
+"label": "ulṭā pesh uː"
+},
+{
+"c": "ٖ",
+"group": "signs",
+"n": 2542,
+"name": "Subscript Alef",
+"code": "U+0656",
+"label": "khaḍā zer iː"
+},
+{
+"c": "۪",
+"group": "signs",
+"n": 1266,
+"name": "Empty Centre Low Stop",
+"code": "U+06EA",
+"label": "low stop"
+},
+{
+"c": "ٟ",
+"group": "signs",
+"n": 116,
+"name": "Wavy Hamza Below",
+"code": "U+065F",
+"label": "wavy hamza ɨː"
+},
+{
+"c": "ٍ",
+"group": "signs",
+"n": 110,
+"name": "Kasratan",
+"code": "U+064D",
+"label": "do zer"
+},
+{
+"c": "٘",
+"group": "signs",
+"n": 105,
+"name": "Mark Noon Ghunna",
+"code": "U+0658",
+"label": "noon ghunna"
+},
+{
+"c": "ً",
+"group": "signs",
+"n": 103,
+"name": "Fathatan",
+"code": "U+064B",
+"label": "do zabar"
+},
+{
+"c": "ّ",
+"group": "signs",
+"n": 94,
+"name": "Shadda",
+"code": "U+0651",
+"label": "shad"
+},
+{
+"c": "ٰ",
+"group": "signs",
+"n": 86,
+"name": "Superscript Alef",
+"code": "U+0670",
+"label": "khaḍā zabar"
+},
+{
+"c": "ؔ",
+"group": "signs",
+"n": 44,
+"name": "Sign Takhallus",
+"code": "U+0614",
+"label": "takhallus"
+},
+{
+"c": "ؒ",
+"group": "signs",
+"n": 27,
+"name": "Sign Rahmatullah Alayhe",
+"code": "U+0612",
+"label": "rahmatullah"
+},
+{
+"c": "ۭ",
+"group": "signs",
+"n": 21,
+"name": "Small Low Meem",
+"code": "U+06ED",
+"label": "small meem"
+},
+{
+"c": "ؑ",
+"group": "signs",
+"n": 15,
+"name": "Sign Alayhe Assallam",
+"code": "U+0611",
+"label": "alayhis-salam"
+},
+{
+"c": "ٓ",
+"group": "signs",
+"n": 11,
+"name": "Maddah Above",
+"code": "U+0653",
+"label": "madd"
+},
+{
+"c": "ؓ",
+"group": "signs",
+"n": 6,
+"name": "Sign Radi Allahou Anhu",
+"code": "U+0613",
+"label": "radiallahu"
+},
+{
+"c": "ْ",
+"group": "signs",
+"n": 5,
+"name": "Sukun",
+"code": "U+0652",
+"label": "sukun"
+},
+{
+"c": "ٙ",
+"group": "signs",
+"n": 3,
+"name": "Zwarakay",
+"code": "U+0659",
+"label": "zwarakay"
+},
+{
+"c": "ٌ",
+"group": "signs",
+"n": 1,
+"name": "Dammatan",
+"code": "U+064C",
+"label": "do pesh"
+},
+{
+"c": "ؐ",
+"group": "signs",
+"n": 1,
+"name": "Sign Sallallahou Alayhe Wassallam",
+"code": "U+0610",
+"label": "sallallahu"
+},
+{
+"c": "ؠ",
+"group": "letters",
+"n": 2795,
+"name": "Kashmiri Yeh",
+"code": "U+0620",
+"label": ""
+},
+{
+"c": "ء",
+"group": "letters",
+"n": 145,
+"name": "Hamza",
+"code": "U+0621",
+"label": ""
+},
+{
+"c": "آ",
+"group": "letters",
+"n": 4438,
+"name": "Alef With Madda Above",
+"code": "U+0622",
+"label": ""
+},
+{
+"c": "أ",
+"group": "letters",
+"n": 1319,
+"name": "Alef With Hamza Above",
+"code": "U+0623",
+"label": ""
+},
+{
+"c": "ؤ",
+"group": "letters",
+"n": 757,
+"name": "Waw With Hamza Above",
+"code": "U+0624",
+"label": ""
+},
+{
+"c": "إ",
+"group": "letters",
+"n": 153,
+"name": "Alef With Hamza Below",
+"code": "U+0625",
+"label": ""
+},
+{
+"c": "ئ",
+"group": "letters",
+"n": 2418,
+"name": "Yeh With Hamza Above",
+"code": "U+0626",
+"label": ""
+},
+{
+"c": "ا",
+"group": "letters",
+"n": 63593,
+"name": "Alef",
+"code": "U+0627",
+"label": ""
+},
+{
+"c": "ب",
+"group": "letters",
+"n": 18909,
+"name": "Beh",
+"code": "U+0628",
+"label": ""
+},
+{
+"c": "ة",
+"group": "letters",
+"n": 5,
+"name": "Teh Marbuta",
+"code": "U+0629",
+"label": ""
+},
+{
+"c": "ت",
+"group": "letters",
+"n": 31092,
+"name": "Teh",
+"code": "U+062A",
+"label": ""
+},
+{
+"c": "ث",
+"group": "letters",
+"n": 1006,
+"name": "Theh",
+"code": "U+062B",
+"label": ""
+},
+{
+"c": "ج",
+"group": "letters",
+"n": 8111,
+"name": "Jeem",
+"code": "U+062C",
+"label": ""
+},
+{
+"c": "ح",
+"group": "letters",
+"n": 5035,
+"name": "Hah",
+"code": "U+062D",
+"label": ""
+},
+{
+"c": "خ",
+"group": "letters",
+"n": 4199,
+"name": "Khah",
+"code": "U+062E",
+"label": ""
+},
+{
+"c": "د",
+"group": "letters",
+"n": 20555,
+"name": "Dal",
+"code": "U+062F",
+"label": ""
+},
+{
+"c": "ذ",
+"group": "letters",
+"n": 1364,
+"name": "Thal",
+"code": "U+0630",
+"label": ""
+},
+{
+"c": "ر",
+"group": "letters",
+"n": 52370,
+"name": "Reh",
+"code": "U+0631",
+"label": ""
+},
+{
+"c": "ز",
+"group": "letters",
+"n": 11848,
+"name": "Zain",
+"code": "U+0632",
+"label": ""
+},
+{
+"c": "س",
+"group": "letters",
+"n": 32541,
+"name": "Seen",
+"code": "U+0633",
+"label": ""
+},
+{
+"c": "ش",
+"group": "letters",
+"n": 10456,
+"name": "Sheen",
+"code": "U+0634",
+"label": ""
+},
+{
+"c": "ص",
+"group": "letters",
+"n": 3307,
+"name": "Sad",
+"code": "U+0635",
+"label": ""
+},
+{
+"c": "ض",
+"group": "letters",
+"n": 1272,
+"name": "Dad",
+"code": "U+0636",
+"label": ""
+},
+{
+"c": "ط",
+"group": "letters",
+"n": 2281,
+"name": "Tah",
+"code": "U+0637",
+"label": ""
+},
+{
+"c": "ظ",
+"group": "letters",
+"n": 1261,
+"name": "Zah",
+"code": "U+0638",
+"label": ""
+},
+{
+"c": "ع",
+"group": "letters",
+"n": 5391,
+"name": "Ain",
+"code": "U+0639",
+"label": ""
+},
+{
+"c": "غ",
+"group": "letters",
+"n": 1401,
+"name": "Ghain",
+"code": "U+063A",
+"label": ""
+},
+{
+"c": "ف",
+"group": "letters",
+"n": 7055,
+"name": "Feh",
+"code": "U+0641",
+"label": ""
+},
+{
+"c": "ق",
+"group": "letters",
+"n": 5650,
+"name": "Qaf",
+"code": "U+0642",
+"label": ""
+},
+{
+"c": "ل",
+"group": "letters",
+"n": 26976,
+"name": "Lam",
+"code": "U+0644",
+"label": ""
+},
+{
+"c": "م",
+"group": "letters",
+"n": 33939,
+"name": "Meem",
+"code": "U+0645",
+"label": ""
+},
+{
+"c": "ن",
+"group": "letters",
+"n": 65710,
+"name": "Noon",
+"code": "U+0646",
+"label": ""
+},
+{
+"c": "و",
+"group": "letters",
+"n": 50060,
+"name": "Waw",
+"code": "U+0648",
+"label": ""
+},
+{
+"c": "ٮ",
+"group": "letters",
+"n": 1582,
+"name": "Dotless Beh",
+"code": "U+066E",
+"label": ""
+},
+{
+"c": "ٱ",
+"group": "letters",
+"n": 5,
+"name": "Alef Wasla",
+"code": "U+0671",
+"label": ""
+},
+{
+"c": "ٲ",
+"group": "letters",
+"n": 9361,
+"name": "Alef With Wavy Hamza Above",
+"code": "U+0672",
+"label": ""
+},
+{
+"c": "ٳ",
+"group": "letters",
+"n": 1,
+"name": "Alef With Wavy Hamza Below",
+"code": "U+0673",
+"label": ""
+},
+{
+"c": "ٸ",
+"group": "letters",
+"n": 1,
+"name": "High Hamza Yeh",
+"code": "U+0678",
+"label": ""
+},
+{
+"c": "ٹ",
+"group": "letters",
+"n": 11480,
+"name": "Tteh",
+"code": "U+0679",
+"label": ""
+},
+{
+"c": "پ",
+"group": "letters",
+"n": 13447,
+"name": "Peh",
+"code": "U+067E",
+"label": ""
+},
+{
+"c": "چ",
+"group": "letters",
+"n": 9047,
+"name": "Tcheh",
+"code": "U+0686",
+"label": ""
+},
+{
+"c": "ڈ",
+"group": "letters",
+"n": 5569,
+"name": "Ddal",
+"code": "U+0688",
+"label": ""
+},
+{
+"c": "ڑ",
+"group": "letters",
+"n": 773,
+"name": "Rreh",
+"code": "U+0691",
+"label": ""
+},
+{
+"c": "ژ",
+"group": "letters",
+"n": 5560,
+"name": "Jeh",
+"code": "U+0698",
+"label": ""
+},
+{
+"c": "ک",
+"group": "letters",
+"n": 31681,
+"name": "Keheh",
+"code": "U+06A9",
+"label": ""
+},
+{
+"c": "گ",
+"group": "letters",
+"n": 11246,
+"name": "Gaf",
+"code": "U+06AF",
+"label": ""
+},
+{
+"c": "ڱ",
+"group": "letters",
+"n": 1,
+"name": "Ngoeh",
+"code": "U+06B1",
+"label": ""
+},
+{
+"c": "ڳ",
+"group": "letters",
+"n": 1,
+"name": "Gueh",
+"code": "U+06B3",
+"label": ""
+},
+{
+"c": "ں",
+"group": "letters",
+"n": 643,
+"name": "Noon Ghunna",
+"code": "U+06BA",
+"label": ""
+},
+{
+"c": "ھ",
+"group": "letters",
+"n": 19201,
+"name": "Heh Doachashmee",
+"code": "U+06BE",
+"label": ""
+},
+{
+"c": "ہ",
+"group": "letters",
+"n": 33400,
+"name": "Heh Goal",
+"code": "U+06C1",
+"label": ""
+},
+{
+"c": "ۂ",
+"group": "letters",
+"n": 184,
+"name": "Heh Goal With Hamza Above",
+"code": "U+06C2",
+"label": ""
+},
+{
+"c": "ۃ",
+"group": "letters",
+"n": 2,
+"name": "Teh Marbuta Goal",
+"code": "U+06C3",
+"label": ""
+},
+{
+"c": "ۄ",
+"group": "letters",
+"n": 2046,
+"name": "Waw With Ring",
+"code": "U+06C4",
+"label": ""
+},
+{
+"c": "ۅ",
+"group": "letters",
+"n": 1301,
+"name": "Kirghiz Oe",
+"code": "U+06C5",
+"label": ""
+},
+{
+"c": "ۆ",
+"group": "letters",
+"n": 230,
+"name": "Oe",
+"code": "U+06C6",
+"label": ""
+},
+{
+"c": "ی",
+"group": "letters",
+"n": 55551,
+"name": "Farsi Yeh",
+"code": "U+06CC",
+"label": ""
+},
+{
+"c": "ۍ",
+"group": "letters",
+"n": 7476,
+"name": "Yeh With Tail",
+"code": "U+06CD",
+"label": ""
+},
+{
+"c": "ێ",
+"group": "letters",
+"n": 28,
+"name": "Yeh With Small V",
+"code": "U+06CE",
+"label": ""
+},
+{
+"c": "ے",
+"group": "letters",
+"n": 5076,
+"name": "Yeh Barree",
+"code": "U+06D2",
+"label": ""
+},
+{
+"c": "ۓ",
+"group": "letters",
+"n": 48,
+"name": "Yeh Barree With Hamza Above",
+"code": "U+06D3",
+"label": ""
+},
+{
+"c": "ۯ",
+"group": "letters",
+"n": 103,
+"name": "Reh With Inverted V",
+"code": "U+06EF",
+"label": ""
+},
+{
+"c": "۔",
+"group": "more",
+"n": 4774,
+"name": "Full Stop",
+"code": "U+06D4",
+"label": ""
+},
+{
+"c": "،",
+"group": "more",
+"n": 3069,
+"name": "Comma",
+"code": "U+060C",
+"label": ""
+},
+{
+"c": "﴿",
+"group": "more",
+"n": 350,
+"name": "Ornate Right Parenthesis",
+"code": "U+FD3F",
+"label": ""
+},
+{
+"c": "﴾",
+"group": "more",
+"n": 333,
+"name": "Ornate Left Parenthesis",
+"code": "U+FD3E",
+"label": ""
+},
+{
+"c": "؟",
+"group": "more",
+"n": 209,
+"name": "Question Mark",
+"code": "U+061F",
+"label": ""
+},
+{
+"c": "؛",
+"group": "more",
+"n": 25,
+"name": "Semicolon",
+"code": "U+061B",
+"label": ""
+},
+{
+"c": "۲",
+"group": "more",
+"n": 10,
+"name": "Extended Arabic-Indic Digit Two",
+"code": "U+06F2",
+"label": ""
+},
+{
+"c": "۸",
+"group": "more",
+"n": 9,
+"name": "Extended Arabic-Indic Digit Eight",
+"code": "U+06F8",
+"label": ""
+},
+{
+"c": "۳",
+"group": "more",
+"n": 8,
+"name": "Extended Arabic-Indic Digit Three",
+"code": "U+06F3",
+"label": ""
+},
+{
+"c": "؍",
+"group": "more",
+"n": 6,
+"name": "Date Separator",
+"code": "U+060D",
+"label": ""
+},
+{
+"c": "۰",
+"group": "more",
+"n": 6,
+"name": "Extended Arabic-Indic Digit Zero",
+"code": "U+06F0",
+"label": ""
+},
+{
+"c": "۱",
+"group": "more",
+"n": 6,
+"name": "Extended Arabic-Indic Digit One",
+"code": "U+06F1",
+"label": ""
+},
+{
+"c": "۷",
+"group": "more",
+"n": 6,
+"name": "Extended Arabic-Indic Digit Seven",
+"code": "U+06F7",
+"label": ""
+},
+{
+"c": "۴",
+"group": "more",
+"n": 5,
+"name": "Extended Arabic-Indic Digit Four",
+"code": "U+06F4",
+"label": ""
+},
+{
+"c": "۶",
+"group": "more",
+"n": 5,
+"name": "Extended Arabic-Indic Digit Six",
+"code": "U+06F6",
+"label": ""
+},
+{
+"c": "۵",
+"group": "more",
+"n": 5,
+"name": "Extended Arabic-Indic Digit Five",
+"code": "U+06F5",
+"label": ""
+},
+{
+"c": "٭",
+"group": "more",
+"n": 4,
+"name": "Five Pointed Star",
+"code": "U+066D",
+"label": ""
+},
+{
+"c": "۹",
+"group": "more",
+"n": 4,
+"name": "Extended Arabic-Indic Digit Nine",
+"code": "U+06F9",
+"label": ""
+},
+{
+"c": "٠",
+"group": "more",
+"n": 2,
+"name": "Arabic-Indic Digit Zero",
+"code": "U+0660",
+"label": ""
+},
+{
+"c": "‌",
+"group": "more",
+"n": 1,
+"name": "Zero Width Non-Joiner",
+"code": "U+200C",
+"label": "no join"
+},
+{
+"c": "؎",
+"group": "more",
+"n": 1,
+"name": "Poetic Verse Sign",
+"code": "U+060E",
+"label": ""
+}
+]
+}

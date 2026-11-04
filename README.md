@@ -9,7 +9,7 @@ combined into a clean dataset for training Kashmiri OCR.
 
 | | |
 |---|---|
-| **Review** | picture, typed text, two buttons. Keys: `C` correct, `X` incorrect, `S` skip. If incorrect: the text box starts with the typed text so you fix one letter; on-screen keys for every Kashmiri vowel sign; a tick box for "the box itself is wrong". |
+| **Review** | picture, typed text, two buttons. Keys: `C` correct, `X` incorrect, `S` skip. If incorrect: the text box starts with the typed text so you fix one letter; a complete on-screen Kashmiri keyboard; a tick box for "the box itself is wrong". |
 | **Leaderboard** | points, reviews, this week / all time, and the progress of the whole dataset. |
 | **Profile** | your stats; sign out on this device. |
 | **Admin** (`/admin`) | **who answered what** (every picture, every reviewer's answer, right or wrong), **data per font**, spam flags, block / unblock, JSONL export. |
@@ -32,23 +32,35 @@ npm run dev
 Open http://localhost:3000. Without `DATABASE_URL` the app uses a built-in local Postgres (PGlite, in
 `.data/`), so nothing else is needed (the import step is optional: an empty database loads `data/demo` by itself).
 
-### Starter data (`data/demo`, 2,651 pictures)
+### Starter data (`data/demo`, 4,393 pictures)
 
-| Font | Pictures | From |
-|---|---|---|
-| Gulmarg Nastaleeq | 113 | 5 rendered pages |
-| Afan Koshur Naksh | 312 | 5 rendered pages |
-| Narqalam | 295 | 5 rendered pages |
-| Noto Nastaliq Urdu | 227 | 5 + 2 rendered pages |
-| Noto Naskh Arabic | 140 | 2 rendered pages |
-| Gulzar | 64 | 2 rendered pages |
-| Kaggle word images (font not labelled) | 1,500 | random sample of `nawabhussaen/kashmiri-ocr` |
+| Font | Pictures |
+|---|---|
+| Afan Koshur Naksh | 703 |
+| Narqalam | 622 |
+| Noto Naskh Arabic | 518 |
+| Noto Nastaliq Urdu | 408 |
+| Gulzar | 328 |
+| Gulmarg Nastaleeq | 314 |
+| Kaggle word images (font not labelled) | 1,500 |
 
-Rendered pages use real words from Kaggle `faizaniqbal52/koshur-master-50k-manifest` in the fonts of
-`faizaniqbal52/kashmiri-fonts`, segmented by `segmentation/`. Their typed text is the Kashmiri word
-model's reading, so wrong pairs are real model mistakes: about half of the Gulmarg Nastaleeq words,
-8–19% for the Naskh-style fonts. The Kaggle sample shows its own labels. About 15% of the rendered
-words (known answers) are check items.
+Pages are rendered from real words of Kaggle `faizaniqbal52/koshur-master-50k-manifest` (half of them
+rich in vowel signs) in the fonts of `faizaniqbal52/kashmiri-fonts` plus Noto Naskh and Gulzar, then
+segmented by `segmentation/`. Each font only gets words it can draw (Gulzar lacks some Kashmiri letters,
+so it skips about 30% of words). The typed text is the Kashmiri word model's reading, so wrong pairs are
+real model mistakes: 37% in Gulmarg Nastaleeq, 22% Afan Koshur Naksh, 7–16% in the others. About 15%
+of rendered words (known answers) are check items. When `data/demo/manifest.jsonl` grows, a deployed
+app adds the new pictures by itself on its next start; existing pictures and answers are untouched.
+
+### Keyboard
+
+`lib/ks-keyboard.json` lists every Arabic-script character found in all the data (69,434 Kaggle labels,
+the 50k word list, the dictionary, the starter set) plus the standard Kashmiri set: 26 vowel signs and
+marks, 62 letters, 21 numbers and punctuation. Rebuild it after adding data:
+
+```bash
+python3 scripts/build_keyboard.py lib/ks-keyboard.json kashmiri-ocr.zip master_50k_words_manifest.json data/demo/manifest.jsonl
+```
 
 **Not used yet:** `jazz786/handwritten-kashmiri-text-dataset` (51 handwritten pages) has no typed text,
 so there is nothing to compare against until the pages are transcribed.
@@ -120,7 +132,7 @@ images) upload them to Supabase Storage instead: also set `SUPABASE_URL` and `SU
 ### Looking at the data in Google Sheets
 
 The database keeps the answers safe; Sheets is a good place to *look* at them. On `/admin`:
-**Answers sheet (CSV)** downloads one row per answer (time, reviewer, code, email, picture, font, typed
+**Answers sheet (CSV)** downloads one row per answer (time, reviewer, code, picture, font, typed
 text, answer, fix, right or wrong, picture link) and **Pictures sheet (CSV)** one row per picture with
 everyone's answers. Open either in Google Sheets (File → Import). For a copy that updates by itself,
 put this in cell A1 of an empty, private sheet (it contains your admin key):

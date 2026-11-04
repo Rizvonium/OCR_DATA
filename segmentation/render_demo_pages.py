@@ -29,10 +29,17 @@ def main():
     a = ap.parse_args()
     assert features.check("raqm"), "Pillow needs libraqm to shape Arabic script"
     rnd = random.Random(a.seed)
-    words = [w.strip() for w in open(a.wordlist, encoding="utf-8") if w.strip() and " " not in w.strip() and 2 <= len(w.strip()) <= 9]
+    words = [w.strip() for w in open(a.wordlist, encoding="utf-8") if w.strip() and " " not in w.strip() and 2 <= len(w.strip()) <= 12]
     fonts = sorted(os.path.join(a.fonts, f) for f in os.listdir(a.fonts) if f.endswith(".ttf"))
     os.makedirs(a.out, exist_ok=True)
     font_names = open(os.path.join(a.out, "fonts.tsv"), "w", encoding="utf-8")
+    # only words the font can draw: a missing glyph would print as an empty box
+    from fontTools.ttLib import TTFont
+    drawable = {}
+    for fp in fonts:
+        cmap = TTFont(fp).getBestCmap() or {}
+        drawable[fp] = [w for w in words if all(ord(c) in cmap for c in w)]
+        print(f"{font_label(fp)}: can draw {len(drawable[fp])} of {len(words)} words")
     for p in range(a.pages * len(fonts)):
         font_path = fonts[p % len(fonts)]
         nast = any(k in font_path for k in ("Nastaliq", "Nastaleeq", "Gulzar"))
@@ -44,7 +51,7 @@ def main():
         pitch = int(size * (2.6 if nast else 2.0))
         lines, y = [], int(pitch * 0.9)
         while y < H - pitch * 0.9:
-            ln = [rnd.choice(words) for _ in range(rnd.randint(3, 5))]
+            ln = [rnd.choice(drawable[font_path]) for _ in range(rnd.randint(3, 5))]
             text = " ".join(ln)
             spaced = "   ".join(ln)  # generous word gaps, as in printed Kashmiri books
             d.text((W - 70, y), spaced, font=font, fill=0, anchor="rm", direction="rtl", language="ks")

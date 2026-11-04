@@ -33,6 +33,12 @@ export async function POST(req: Request) {
 
   if (user) {
     if (user.locked) return fail(`Too many wrong PINs. Try again in ${LOCK_MINUTES} minutes.`, 429);
+    // profiles made before PINs existed: the first PIN typed for them becomes their PIN
+    if (!user.pin_hash) {
+      await q("update contributors set pin_hash = $2 where id = $1 and pin_hash is null", [user.id, hashPin(pin)]);
+      await startSession(user.id);
+      return json({ me: { id: user.id, code: user.code, handle: user.handle, status: user.status }, created: false, pinSet: true });
+    }
     if (!checkPin(pin, user.pin_hash)) {
       await q(`update contributors set
                  locked_until = case when failed_pins + 1 >= $2 then now() + ($3::text || ' minutes')::interval else locked_until end,

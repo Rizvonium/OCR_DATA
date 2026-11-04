@@ -13,7 +13,7 @@ export function normalizeKs(s: string): string {
 }
 
 const ARABIC_LETTER = /[ء-يٮ-ۓۺ-ۿݐ-ݿ]/;
-const ALLOWED = /^[؀-ۿݐ-ݿࢠ-ࣿ‌\s.\-'"()]+$/;
+const ALLOWED = /^[؀-ۿݐ-ݿࢠ-ࣿ‌﴾﴿\s.\-'"()]+$/;
 
 /** Returns an error message, or null if the correction looks like Kashmiri text. */
 export function checkCorrection(s: string): string | null {

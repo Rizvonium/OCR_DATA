@@ -170,7 +170,7 @@ def main():
                     ctx = context(rgb, line["y_band"], box, calib["x_left"], calib["x_right"], margin, int(3 * LH))
                     if ctx.width > 1400:
                         ctx = ctx.resize((1400, max(1, round(ctx.height * 1400 / ctx.width))), Image.LANCZOS)
-                    ctx.save(os.path.join(a.out, "ctx", sid + ".webp"), quality=82)
+                    ctx.save(os.path.join(a.out, "ctx", sid + ".webp"), quality=62)
                     rec = {
                         "id": sid, "dataset": a.dataset, "kind": kind, "font": font_map.get(stem, a.font),
                         "image": f"img/{sid}.webp", "context": f"ctx/{sid}.webp",

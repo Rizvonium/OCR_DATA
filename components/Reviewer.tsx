@@ -23,8 +23,6 @@ export function Reviewer() {
   const [toast, setToast] = useState<Toast>(null);
   const [session, setSession] = useState(0);
   const [plus, setPlus] = useState(0);
-  const [fullKb, setFullKb] = useState(false);
-  const [shift, setShift] = useState(false);
   const input = useRef<HTMLInputElement>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
 
@@ -108,7 +106,6 @@ export function Reviewer() {
 
   const onInputKey = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter") { e.preventDefault(); answer("incorrect", text); return; }
-    setShift(e.shiftKey);
   };
 
 
@@ -169,12 +166,9 @@ export function Reviewer() {
               <div className="fix">
                 <div className="field" style={{ marginBottom: 0 }}>
                   <label htmlFor="fix">Type what the picture actually says (optional)</label>
-                  <input id="fix" ref={input} className="fix-input ks" dir="rtl" value={text} onChange={(e) => setText(e.target.value)} onKeyDown={onInputKey} onKeyUp={(e) => setShift(e.shiftKey)} autoComplete="off" spellCheck={false} lang="ks" />
+                  <input id="fix" ref={input} className="fix-input ks" dir="rtl" value={text} onChange={(e) => setText(e.target.value)} onKeyDown={onInputKey} autoComplete="off" spellCheck={false} lang="ks" />
                 </div>
-                <div className="fix-tools">
-                  <button type="button" className="btn ghost" onClick={() => setFullKb(!fullKb)}>{fullKb ? "Fewer keys" : "All letters"}</button>
-                </div>
-                <Keyboard onKey={insert} full={fullKb} shift={shift} />
+                <Keyboard onKey={insert} />
                 <label className="check" style={{ marginTop: 16 }}>
                   <input type="checkbox" checked={badCrop} onChange={(e) => setBadCrop(e.target.checked)} />
                   <span>The box itself is wrong — it cuts letters off, or holds more or less than one {task.kind === "line" ? "line" : "word"}.</span>
