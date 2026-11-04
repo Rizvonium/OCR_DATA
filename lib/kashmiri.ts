@@ -12,15 +12,23 @@ export function normalizeKs(s: string): string {
     .normalize("NFC");
 }
 
-const ARABIC_LETTER = /[ء-يٮ-ۓۺ-ۿݐ-ݿ]/;
+// Every character the on-screen keyboard can type (lib/ks-keyboard.json) must be accepted: any
+// Perso-Arabic letter, digit or punctuation mark counts (earlier a fixed list of code ranges started at
+// U+0621 and so refused ؠ U+0620, ۯ, the digits and the punctuation).
+const ARABIC_BLOCKS = /[؀-ۿݐ-ݿࢠ-ࣿ﴾﴿]/;
 const ALLOWED = /^[؀-ۿݐ-ݿࢠ-ࣿ‌﴾﴿\s.\-'"()]+$/;
+const isBase = (c: string) => ARABIC_BLOCKS.test(c) && /[\p{L}\p{N}\p{P}\p{S}]/u.test(c); // not a mark or invisible
 
 /** Returns an error message, or null if the correction looks like Kashmiri text. */
 export function checkCorrection(s: string): string | null {
   if (!s) return "Type the text you see, or submit without typing.";
   if (s.length > 160) return "That is longer than any word or line here.";
-  if (!ARABIC_LETTER.test(s)) return "Please type in Kashmiri (Perso-Arabic) script.";
   if (!ALLOWED.test(s)) return "Only Kashmiri letters and signs, please (no Latin letters or digits).";
+  if (![...s].some(isBase)) {
+    return /\p{M}/u.test(s)
+      ? "A vowel sign needs the letter it sits on: type the letter first, then the sign."
+      : "Please type in Kashmiri (Perso-Arabic) script.";
+  }
   return null;
 }
 
