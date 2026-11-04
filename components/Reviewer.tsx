@@ -109,12 +109,14 @@ export function Reviewer() {
   };
 
 
-  const pct = Math.min(100, Math.round(session / SESSION_GOAL * 100));
+  // goals of 20 that keep rolling on: 0–20 "of 20", 21–40 "of 40", ...; the bar fills for each block
+  const goal = Math.max(SESSION_GOAL, Math.ceil(session / SESSION_GOAL) * SESSION_GOAL);
+  const pct = Math.round(((session - (goal - SESSION_GOAL)) / SESSION_GOAL) * 100);
 
   return (
     <div className="review">
       <div className="status-line">
-        <span><b>{session}</b> of {SESSION_GOAL}</span>
+        <span><b>{session}</b> of {goal}</span>
         <span className="bar-mini"><i style={{ width: `${pct}%` }} /></span>
         <span><b>{stats?.points ?? 0}</b> points{stats?.points ? ` · #${stats.rank}` : ""}</span>
       </div>
