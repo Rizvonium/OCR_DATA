@@ -176,6 +176,9 @@ create table if not exists group_answers (
   unique (group_id, contributor_id)
 );
 create index if not exists group_answers_by_contributor on group_answers (contributor_id, created_at desc);
+-- 'not_chunk': the group is only marks or specks, not proper pieces of words
+alter table group_answers drop constraint if exists group_answers_verdict_check;
+alter table group_answers add constraint group_answers_verdict_check check (verdict in ('correct', 'incorrect', 'skip', 'not_chunk'));
 
 -- Match game: boards of look-alike chunks mixed across fonts (segmentation/make_boards.py).
 create table if not exists match_boards (
@@ -197,6 +200,8 @@ create table if not exists match_answers (
   unique (board_id, contributor_id)
 );
 create index if not exists match_answers_by_contributor on match_answers (contributor_id, created_at desc);
+-- tiles flagged "not a chunk" (only a mark or a speck, not a proper piece of a word)
+alter table match_answers add column if not exists junk jsonb not null default '[]'::jsonb;
 
 -- Supabase exposes the public schema through its REST API to anyone holding the publishable key.
 -- Row level security with no policies closes that door; the app's server connects as the
@@ -285,7 +290,7 @@ select f.code, f.handle, f.reviews, f.corrections, f.confirmed_corrections, f.go
        (f.reviews + (select count(*) from page_answers pa
                      where pa.contributor_id = f.id and pa.level <> 'page' and pa.verdict <> 'skip')
                   + (select count(*) from group_answers ga where ga.contributor_id = f.id and ga.verdict <> 'skip')
-                  + (select coalesce(sum(jsonb_array_length(ma.sets)), 0) from match_answers ma where ma.contributor_id = f.id))::int as points,
+                  + (select coalesce(sum(jsonb_array_length(ma.sets) + jsonb_array_length(ma.junk)), 0) from match_answers ma where ma.contributor_id = f.id))::int as points,
        f.last_answer_at, f.created_at
 from contributor_flags f
 where f.status <> 'blocked';  -- everyone who registered, except people the admin blocked

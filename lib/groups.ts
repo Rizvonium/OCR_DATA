@@ -18,7 +18,7 @@ export async function nextGroup(cid: string, exclude: string[] = []) {
 export type GroupAnswerIn = { groupId: string; odd?: string[]; verdict: string; correction?: string; ms?: number };
 
 export async function saveGroupAnswer(cid: string, a: GroupAnswerIn): Promise<{ ok: true } | { ok: false; status: number; error: string }> {
-  if (!["correct", "incorrect", "skip"].includes(a.verdict)) return { ok: false, status: 400, error: "Unknown answer." };
+  if (!["correct", "incorrect", "skip", "not_chunk"].includes(a.verdict)) return { ok: false, status: 400, error: "Unknown answer." };
   const [g] = await q<any>("select id, members from chunk_groups where id = $1", [a.groupId]);
   if (!g) return { ok: false, status: 404, error: "That group no longer exists." };
   const ids = new Set((g.members as any[]).map((m) => m.chunk));

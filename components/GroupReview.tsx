@@ -44,7 +44,7 @@ export function GroupReview() {
 
   const same = cur ? cur.members.filter((m) => !odd.has(m.chunk)) : [];
 
-  async function save(verdict: "correct" | "incorrect" | "skip", correction?: string) {
+  async function save(verdict: "correct" | "incorrect" | "skip" | "not_chunk", correction?: string) {
     if (!cur) return;
     setBusy(true); setErr("");
     try {
@@ -84,7 +84,7 @@ export function GroupReview() {
   if (!cur) return <div className="card empty"><p className="muted">{err || "Loading…"}</p></div>;
 
   const rep = same[0] ?? cur.members[0];
-  const VERDICT: Record<string, string> = { correct: "✓ text correct", incorrect: "✗ text corrected", skip: "skipped" };
+  const VERDICT: Record<string, string> = { correct: "✓ text correct", incorrect: "✗ text corrected", skip: "skipped", not_chunk: "not proper chunks" };
   return (
     <div className="review">
       <div className="status-line">
@@ -117,6 +117,9 @@ export function GroupReview() {
                 <div className="choices">
                   <button className="choice yes" disabled={busy} onClick={() => setPhase("text")}><Check /> Yes, all the same</button>
                   <button className="choice no" disabled={busy} onClick={() => setPhase("mark")}><Cross /> Some are different</button>
+                </div>
+                <div className="skip">
+                  <button className="btn ghost" disabled={busy} onClick={() => save("not_chunk")}>Not proper chunks — only marks or specks</button>
                 </div>
               </>
             ) : (
@@ -154,6 +157,7 @@ export function GroupReview() {
                 <div className="skip">
                   <button className="btn ghost" disabled={busy} onClick={() => save("skip")}>Can&apos;t tell — skip</button>
                   {cur.members.length > 1 && <button className="btn ghost" disabled={busy} onClick={() => setPhase("mark")}>Mark different ones</button>}
+                  <button className="btn ghost" disabled={busy} onClick={() => save("not_chunk")}>Not a proper chunk</button>
                 </div>
               </>
             ) : (

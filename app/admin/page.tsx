@@ -5,7 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 const get = (url: string) => fetch(url, { cache: "no-store" }).then((r) => r.json());
 const post = (body: unknown) => fetch("/api/admin", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) }).then((r) => r.json());
 const day = (s?: string | null) => (s ? new Date(s).toLocaleString(undefined, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : "—");
-const VERDICT: Record<string, string> = { correct: "✓ correct", incorrect: "✗ incorrect", skip: "skipped" };
+const VERDICT: Record<string, string> = { correct: "✓ correct", incorrect: "✗ incorrect", skip: "skipped", not_chunk: "not proper chunks" };
 type Tab = "people" | "groups" | "match" | "pages" | "answers" | "photos" | "data";
 
 export default function Admin() {
@@ -120,7 +120,7 @@ function Matches() {
         {" "}<a href="/api/export?format=csv&view=match_sets">Download match sets (CSV)</a></p>
       <div className="card" style={{ overflowX: "auto" }}>
         <table>
-          <thead><tr><th>Person</th><th>Sets popped</th><th>Left as different</th><th>When</th></tr></thead>
+          <thead><tr><th>Person</th><th>Sets popped</th><th>Not a chunk</th><th>Left unsorted</th><th>When</th></tr></thead>
           <tbody>{rows.map((r, i) => (
             <tr key={i}>
               <td><b>{r.handle}</b><br /><span className="mono muted small">{r.board_id}</span></td>
@@ -130,6 +130,10 @@ function Matches() {
                   <img key={id} src={url(r, id)} alt="" style={{ borderColor: ["#c0502a", "#2f7a4a", "#3b82c4", "#8b5cf6", "#d4a017", "#d9468f"][k % 6], borderWidth: 2 }} />
                 ))}</div>
               ))}</td>
+              <td><div className="mini-tiles">{(r.junk || []).map((id: string) => (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img key={id} src={url(r, id)} alt="" className="odd" />
+              ))}</div></td>
               <td><div className="mini-tiles">{r.rest.map((id: string) => (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img key={id} src={url(r, id)} alt="" />

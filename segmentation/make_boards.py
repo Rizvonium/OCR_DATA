@@ -8,7 +8,10 @@ hamzas and vowel signs are removed: ر ز ڑ ژ share one, ب پ ت ٹ ث anothe
 taken from different fonts. People pop away sets that are the same letters, however each font draws
 them. The sets say which shapes, across all fonts, are one and the same.
 """
-import argparse, collections, json, random, unicodedata
+import argparse, collections, hashlib, json, os, random, sys, unicodedata
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from chunk_filter import lone_marks  # noqa: E402
 
 FOLD = {}
 for group in ["اآأإٲٳ", "بپتٹثٮ", "جچحخ", "دڈذ", "رڑزژ", "سش", "صض", "طظ", "عغ", "فق", "کگ", "ںن", "وۄۆۅؤ", "ہھۂۃةه", "یؠێۍئيےۓ"]:
@@ -32,7 +35,10 @@ def main():
         for line in open(f, encoding="utf-8"):
             p = json.loads(line)
             for li, l in enumerate(p["lines"]):
+                marks = lone_marks(l["chunks"])  # a lone dot or sign is not a chunk to label
                 for ci, c in enumerate(l["chunks"]):
+                    if ci in marks:
+                        continue
                     t = (c.get("text") or "").strip()
                     if t and c.get("clean_url") and len(t) <= 4:
                         by_text[t].append({"chunk": f"{p['id']}:L{li + 1}:C{ci + 1}", "clean_url": c["clean_url"], "font": p.get("font"), "text": t})
@@ -61,7 +67,8 @@ def main():
             if len({t["text"] for t in tiles}) < 2 or len(tiles) < 6:
                 break
             rnd.shuffle(tiles)
-            boards.append({"id": f"m{len(boards) + 1:05d}", "skeleton": sk, "texts": sorted({t["text"] for t in tiles}), "tiles": tiles})
+            bid = "m" + hashlib.sha1("|".join(sorted(t["chunk"] for t in tiles)).encode()).hexdigest()[:12]
+            boards.append({"id": bid, "skeleton": sk, "texts": sorted({t["text"] for t in tiles}), "tiles": tiles})
             if len(boards) >= 400:
                 break
         if len(boards) >= 400:

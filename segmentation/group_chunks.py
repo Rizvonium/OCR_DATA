@@ -13,7 +13,10 @@ Writes one group per line: id, members [{chunk, page, line, chunk_index, clean_u
 proposed_text, size, fonts. Groups larger than --max-size are split; chunks with no look-alike are
 written as groups of one only with --singletons.
 """
-import argparse, collections, json, os, sys
+import argparse, collections, hashlib, json, os, sys
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from chunk_filter import lone_marks  # noqa: E402
 import numpy as np
 from PIL import Image, ImageFilter
 from scipy import ndimage
@@ -111,7 +114,10 @@ def main():
         for line in open(f, encoding="utf-8"):
             p = json.loads(line)
             for li, l in enumerate(p["lines"]):
+                marks = lone_marks(l["chunks"])  # a lone dot or sign is not a chunk to label
                 for ci, c in enumerate(l["chunks"]):
+                    if ci in marks:
+                        continue
                     url = c.get("clean_url")
                     if not url:
                         continue
@@ -143,7 +149,9 @@ def main():
         proposed = collections.Counter(m["text"] for m in members if m["text"]).most_common(1)
         for k in range(0, len(members), a.max_size):
             part = members[k:k + a.max_size]
-            groups.append({"id": f"g{len(groups) + 1:05d}", "members": part, "proposed_text": proposed[0][0] if proposed else "",
+            # the id comes from the members, so a rebuilt group keeps its id only if its content is the same
+            gid = "g" + hashlib.sha1("|".join(sorted(m["chunk"] for m in part)).encode()).hexdigest()[:12]
+            groups.append({"id": gid, "members": part, "proposed_text": proposed[0][0] if proposed else "",
                            "size": len(part), "fonts": sorted({m["font"] for m in part if m["font"]})})
     with open(a.out, "w", encoding="utf-8") as fh:
         for g in groups:

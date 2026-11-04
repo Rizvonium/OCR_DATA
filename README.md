@@ -36,7 +36,7 @@ same printed piece repeats a lot, so one decision labels many chunks:
 ‹ Back / Next › go through earlier groups to change an answer. Grouping first requires the same **mark
 signature** (number and place of dots and signs, so ا آ أ, و ز ژ never mix), then a close match of the
 whole piece **and** of its marks (each mark also compared enlarged, so a madd and a hamza differ).
-On the 30 starter pages: 4,514 chunks → 3,226 groups (338 of 2–30 look-alikes covering 1,626 chunks;
+On the 30 starter pages: 4,337 chunks (lone marks left out) → 3,148 groups (338 of 2–30 look-alikes covering 1,626 chunks;
 the rest are single chunks for now and find partners as more pages come in).
 
 Admin → **Chunk labels**; export **Chunk labels (CSV)**: one row per chunk per person, with the text,
@@ -46,9 +46,16 @@ Admin → **Chunk labels**; export **Chunk labels (CSV)**: one row per chunk per
 
 A board of 6–16 chunks, mixed from different fonts, whose letters share a skeleton (ر ز ڑ ژ, or
 مو موٗ مۄ): the same base shapes, different dots and signs, each font drawing them its own way
-(`segmentation/make_boards.py`; 157 boards from the starter pages). Tap one chunk, tap every chunk that
-is the **same letters** even if drawn differently, press **Pop**: they burst away. Repeat until the
-board is clear, or press "The rest are all different". Undo takes back the last set.
+(`segmentation/make_boards.py`; 145 boards from the starter pages). Tap one chunk, tap every chunk that
+is the **same letters** even if drawn differently, press **Pop**: they burst away. Pop as many sets as
+you see and **Submit** at any time; the rest stay unsorted (or "Skip this board"). **Not a chunk…**
+flags tiles that are only a dot, a mark or a speck. Undo takes back the last pop or flag.
+
+Lone marks (much smaller than the other chunks of their line: under 40% of the line's median chunk
+height and 80% of it wide; `segmentation/chunk_filter.py`) are left out of Label and Match: 177 of the
+4,514 starter chunks. They stay in Segmentation, where they are joined into their chunk. In Label, a
+group can be answered "Not proper chunks — only marks or specks". Group and board ids come from their
+members, so a rebuilt group keeps its id only if its content is the same.
 
 Each popped set says "these are one and the same" across fonts: the data for mapping every font onto
 one unified form. 1 point per set. Admin → **Match sets**; export **Match sets (CSV)**: one row per
