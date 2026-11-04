@@ -1,6 +1,7 @@
 import { q } from "@/lib/db";
 import { body, fail, json } from "@/lib/http";
 import { PIN_RE, hashPin, isAdmin } from "@/lib/identity";
+import { CHECKS_ON } from "@/lib/review";
 
 export const dynamic = "force-dynamic";
 
@@ -53,7 +54,8 @@ export async function GET(req: Request) {
             l.points::int as points
      from contributor_flags f join contributors c on c.id = f.id left join leaderboard l on l.code = f.code
      order by cardinality(f.flags) desc, f.reviews desc limit 1000`);
-  const status = await q("select dataset, status, count(*)::int as n from sample_consensus where not is_gold group by dataset, status order by dataset, status");
+  const ordinary = CHECKS_ON ? "not is_gold" : "true"; // with checks off, check items are ordinary pictures
+  const status = await q(`select dataset, status, count(*)::int as n from sample_consensus where ${ordinary} group by dataset, status order by dataset, status`);
   const disputed = await q(
     `select id, image_url, proposed_text, n_correct::int, n_incorrect::int, n_bad_crop::int, top_correction, top_correction_votes::int, status
      from sample_consensus where status in ('disputed', 'needs_text', 'bad_crop') order by n_incorrect desc limit 60`);
@@ -66,8 +68,8 @@ export async function GET(req: Request) {
             count(*) filter (where status in ('verified', 'corrected'))::int as done,
             count(*) filter (where status in ('needs_text', 'disputed'))::int as wrong,
             count(*) filter (where status = 'bad_crop')::int as bad_crop
-     from sample_consensus where not is_gold group by 1 order by samples desc`);
-  return json({ people, status, disputed, fonts, gold: gold.n });
+     from sample_consensus where ${ordinary} group by 1 order by samples desc`);
+  return json({ people, status, disputed, fonts, gold: gold.n, checks: CHECKS_ON });
 }
 
 export async function POST(req: Request) {

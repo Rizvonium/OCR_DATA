@@ -150,7 +150,7 @@ with agreement as (
   group by a.contributor_id
 )
 select c.id, c.code, c.handle, c.status, c.created_at, c.last_seen_at,
-       count(a.id) filter (where a.verdict <> 'skip' and not a.is_gold)            as reviews,
+       count(a.id) filter (where a.verdict <> 'skip')                               as reviews,
        count(a.id) filter (where a.verdict = 'skip')                                as skips,
        count(a.id) filter (where a.correction is not null)                          as corrections,
        coalesce(max(cf.n), 0)                                                       as confirmed_corrections,
@@ -186,24 +186,20 @@ select s.*,
        ], null) as flags
 from contributor_stats s;
 
--- Leaderboard points: 1 per review, +3 per correction someone else confirmed, scaled by trust.
+-- Leaderboard points: kept simple for now, 1 point per picture answered (skips do not count).
 create or replace view leaderboard as
 select f.code, f.handle, f.reviews, f.corrections, f.confirmed_corrections, f.gold_total, f.gold_pass,
        case when f.gold_total > 0 then round(100.0 * f.gold_pass / f.gold_total) end                as check_accuracy,
        case when f.agreement_n > 0 then round(100.0 * f.agreement_hits / f.agreement_n) end         as agreement,
-       round((f.reviews + 3 * f.confirmed_corrections) * f.trust * 1.5)::int                        as points,
+       f.reviews::int                                                                              as points,
        f.last_answer_at, f.created_at
 from contributor_flags f
 where f.status <> 'blocked';  -- everyone who registered, except people the admin blocked
 
--- What the crowd decided about each sample. Votes are weighted by each person's trust;
--- flagged people count 1/5, blocked people not at all.
+-- What the crowd decided about each sample: one vote per person (people the admin blocked: none).
 create or replace view sample_consensus as
 with w as (
-  select id, case when status = 'blocked' then 0
-                  when status = 'flagged' or cardinality(flags) > 0 then trust * 0.2
-                  else trust end as weight
-  from contributor_flags
+  select id, case when status = 'blocked' then 0 else 1 end as weight from contributors
 ), v as (
   select s.id,
          count(a.id) filter (where a.verdict = 'correct')                       as n_correct,

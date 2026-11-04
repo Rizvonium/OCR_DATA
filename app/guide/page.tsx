@@ -28,11 +28,8 @@ export default function Guide() {
       <h2>Skip</h2>
       <p>If the picture is too blurred, or it is not Kashmiri, press <b>Skip</b>. Skipping never costs points.</p>
 
-      <h2>Check items</h2>
-      <p>Now and then you will see a picture whose answer we already know. They look like every other picture. Getting them right raises your trust, which is how much your vote counts and how your points are scaled. If you get one wrong you will see the right answer, so you learn as you go.</p>
-
-      <h2>Fair play</h2>
-      <p>Every picture is seen by at least three people, and their answers are compared. Very fast answering, pressing the same button every time, or often disagreeing with everyone else is flagged automatically, and flagged answers count much less. Please take your time: careful answers are what make this dataset valuable.</p>
+      <h2>Points</h2>
+      <p>You get one point for every picture you answer (skipping does not count). Please take your time: careful answers are what make this dataset valuable, and every picture is seen by several people.</p>
     </div>
   );
 }

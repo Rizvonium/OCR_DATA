@@ -23,7 +23,7 @@ export default function Leaderboard() {
   return (
     <>
       <h1>Leaderboard</h1>
-      <p className="lede">One point per picture, more for corrections others agree with. Careful answers count most.</p>
+      <p className="lede">One point for every picture answered. Thank you, everyone!</p>
 
       {prog && (
         <div className="card panel" style={{ marginBottom: 22 }}>
@@ -56,14 +56,13 @@ export default function Leaderboard() {
           <p className="muted" style={{ padding: 18 }}>No one is ranked yet. Be the first!</p>
         ) : (
           <table>
-            <thead><tr><th>#</th><th>Name</th><th className="num">{period === "week" ? "This week" : "Points"}</th><th className="num">Reviews</th></tr></thead>
+            <thead><tr><th>#</th><th>Name</th><th className="num">{period === "week" ? "This week" : "Points"}</th></tr></thead>
             <tbody>
               {rows.map((r, i) => (
                 <tr key={r.code} className={me?.code === r.code ? "me" : ""}>
                   <td className="rank">{i + 1}</td>
                   <td><b>{r.handle}</b> <span className="mono muted">{r.code}</span></td>
                   <td className="num"><b>{val(r).toLocaleString()}</b></td>
-                  <td className="num">{r.reviews.toLocaleString()}</td>
                 </tr>
               ))}
             </tbody>

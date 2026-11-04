@@ -8,6 +8,9 @@ import { checkCorrection, normalizeKs, sameText } from "./kashmiri";
 const SECRET = process.env.TASK_SECRET || process.env.ADMIN_KEY || process.env.ADMIN_PASSWORD
   || crypto.createHash("sha256").update("ks-ticket:" + (databaseUrl() || process.env.PGLITE_DIR || process.cwd())).digest("hex");
 const GOLD_SHARE = Number(process.env.GOLD_SHARE || 0.12); // ~1 in 8 items is a check item
+// Check items (pictures with a known answer, scored) are off unless QUALITY_CHECKS=1: until there are
+// enough reviewers, every picture is an ordinary one and nobody is scored against known answers.
+export const CHECKS_ON = process.env.QUALITY_CHECKS === "1";
 const PER_MINUTE = Number(process.env.MAX_ANSWERS_PER_MINUTE || 30);
 
 export type Task = {
@@ -39,7 +42,7 @@ export async function nextTask(cid: string, exclude: string[] = []): Promise<Tas
   const [{ n }] = await q<{ n: number }>(
     "select count(*)::int as n from answers where contributor_id = $1", [cid]);
   // check items: the 3rd and 7th answer of every newcomer, then a random ~12%
-  const wantGold = n === 2 || n === 6 || (n >= 10 && Math.random() < GOLD_SHARE);
+  const wantGold = CHECKS_ON && (n === 2 || n === 6 || (n >= 10 && Math.random() < GOLD_SHARE));
   const gold = () => q<any>(
     `select ${COLS} from samples s where is_gold and not (id = any($2::text[]))
        and not exists (select 1 from answers a where a.sample_id = s.id and a.contributor_id = $1)
@@ -48,11 +51,11 @@ export async function nextTask(cid: string, exclude: string[] = []): Promise<Tas
   // regular items: random, but leaning towards pictures that already have some reviews so each one
   // reaches a decision sooner; never one this person has answered
   const regular = () => q<any>(
-    `select ${COLS} from samples s where not is_gold and review_count < target_reviews and not (id = any($2::text[]))
+    `select ${COLS} from samples s where (not is_gold or $3) and review_count < target_reviews and not (id = any($2::text[]))
        and not exists (select 1 from answers a where a.sample_id = s.id and a.contributor_id = $1)
-     order by review_count + random() * 1.6 desc limit 1`, [cid, exclude]);
+     order by review_count + random() * 1.6 desc limit 1`, [cid, exclude, !CHECKS_ON]);
   let rows = wantGold ? await gold() : await regular();
-  if (!rows.length) rows = wantGold ? await regular() : await gold();
+  if (!rows.length) rows = wantGold ? await regular() : CHECKS_ON ? await gold() : [];
   if (!rows.length) return null;
   return { ...rows[0], ticket: makeTicket(cid, rows[0].id) };
 }
@@ -71,6 +74,7 @@ export async function submitAnswer(cid: string, a: AnswerIn): Promise<AnswerOut>
   if (recent >= PER_MINUTE) return { ok: false, status: 429, error: "That is very fast. Take a breath and look closely at each picture." };
   const [s] = await q<any>("select id, proposed_text, is_gold, gold_verdict, gold_text from samples where id = $1", [a.sampleId]);
   if (!s) return { ok: false, status: 404, error: "That picture no longer exists." };
+  if (!CHECKS_ON) s.is_gold = false; // an ordinary picture: no scoring, no feedback
 
   let verdict = a.verdict;
   let correction: string | null = null;

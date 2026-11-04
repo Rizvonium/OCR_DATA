@@ -150,7 +150,17 @@ images) upload them to Supabase Storage instead: also set `SUPABASE_URL` and `SU
 - While reviewing, **‹ Back** and **Next ›** move through the pictures answered in this run; an earlier
   answer can be changed. Check items cannot be changed once answered (their answer has been shown).
 
-## Spam and quality checks
+## Points and quality checks
+
+**For now, points are simple: 1 point for every picture answered** (skips do not count), and every
+picture is an ordinary picture: no check items, no scoring against known answers, one vote per person.
+The admin page still shows speed and same-button patterns, without effect on points.
+
+The checks below are built in but **off**. To turn the check items on once there are enough reviewers,
+set `QUALITY_CHECKS=1` in Vercel and redeploy (points then stay 1 per answer; check-item results show on
+the admin page and steer which answers win).
+
+## Spam and quality checks (when turned on)
 
 | Check | How |
 |---|---|

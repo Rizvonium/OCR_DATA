@@ -206,7 +206,7 @@ function Data() {
         </div>
         <p className="small muted" style={{ marginBottom: 0 }}>Live copy in Google Sheets (cell A1 of a private sheet):{" "}
           <code style={{ userSelect: "all", wordBreak: "break-all" }}>{`=IMPORTDATA("${typeof window !== "undefined" ? location.origin : ""}/api/export?key=YOUR_ADMIN_PASSWORD&format=csv&view=answers")`}</code></p>
-        <div style={{ marginTop: 12 }}><button className="btn ghost" onClick={async () => { const r = await post({ action: "promote_gold", limit: 50 }); setMsg(r.error || `${r.promoted} pictures became check items.`); load(); }}>Make 50 unanimous pictures into check items ({d.gold} now)</button> {msg && <span className="small">{msg}</span>}</div>
+        {d.checks && <div style={{ marginTop: 12 }}><button className="btn ghost" onClick={async () => { const r = await post({ action: "promote_gold", limit: 50 }); setMsg(r.error || `${r.promoted} pictures became check items.`); load(); }}>Make 50 unanimous pictures into check items ({d.gold} now)</button> {msg && <span className="small">{msg}</span>}</div>}
       </div>
       <h2>Data per font</h2>
       <div className="card" style={{ overflowX: "auto", marginBottom: 18 }}>
