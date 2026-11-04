@@ -31,6 +31,20 @@ async function answersView(only: string, offset: number, who: string | null) {
 export async function GET(req: Request) {
   if (!isAdmin(req)) return fail("Admin key required.", 401);
   const u = new URL(req.url);
+  if (u.searchParams.get("view") === "groups") {
+    // answered groups with every person's decision; "same" = people who decided exactly alike
+    const rows = await q(
+      `select g.id, g.size, g.proposed_text, g.members, a.verdict, a.correction, a.odd, a.updated_at, c.handle, c.code,
+              (select count(*)::int from group_answers b where b.group_id = a.group_id and b.verdict = a.verdict
+                 and coalesce(b.correction, '') = coalesce(a.correction, '') and b.odd = a.odd) as same
+       from group_answers a join chunk_groups g on g.id = a.group_id join contributors c on c.id = a.contributor_id
+       order by a.updated_at desc limit 300`);
+    const [t] = await q<any>(
+      `select (select count(*)::int from chunk_groups) as groups, (select coalesce(sum(size), 0)::int from chunk_groups) as chunks,
+              (select count(distinct group_id)::int from group_answers where verdict <> 'skip') as labelled_groups,
+              (select coalesce(sum(g.size), 0)::int from chunk_groups g where exists (select 1 from group_answers a where a.group_id = g.id and a.verdict <> 'skip')) as labelled_chunks`);
+    return json({ rows, totals: t });
+  }
   if (u.searchParams.get("view") === "pages") {
     // each page: how many people worked on / finished it, and how they judged the lines, chunks and texts
     const rows = await q(

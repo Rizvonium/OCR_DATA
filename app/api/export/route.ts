@@ -29,6 +29,25 @@ export async function GET(req: Request) {
   const dataset = u.searchParams.get("dataset");
   const day = new Date().toISOString().slice(0, 10);
 
+  if (u.searchParams.get("view") === "chunk_labels") {
+    // the dataset from the group labelling: one row per chunk per person who labelled it
+    // (members they marked "not the same" are left out); agree = people who gave this chunk the same text
+    const rows = await q(
+      `with labels as (
+         select m->>'chunk' as chunk, m->>'clean_url' as clean_url, m->>'page' as page, g.id as group_id,
+                case when a.verdict = 'correct' then g.proposed_text else a.correction end as text,
+                a.verdict, c.handle as reviewer, c.code as reviewer_code, a.updated_at as time
+         from group_answers a join chunk_groups g on g.id = a.group_id join contributors c on c.id = a.contributor_id,
+              jsonb_array_elements(g.members) m
+         where a.verdict <> 'skip' and not (a.odd ? (m->>'chunk')))
+       select l.*, count(*) over (partition by l.chunk, l.text) as agree from labels l order by l.chunk, l.time`);
+    for (const r of rows as any[]) if (typeof r.clean_url === "string" && r.clean_url.startsWith("/")) r.clean_url = u.origin + r.clean_url;
+    if (csv) {
+      const cols = ["chunk", "text", "agree", "verdict", "reviewer", "reviewer_code", "time", "group_id", "page", "clean_url"];
+      return new Response(toCsv(rows, cols), { headers: { "content-type": "text/csv; charset=utf-8", "content-disposition": `attachment; filename="kashmiri-ocr-chunk-labels-${day}.csv"` } });
+    }
+    return new Response(rows.map((r) => JSON.stringify(r)).join("\n") + "\n", { headers: { "content-type": "application/x-ndjson; charset=utf-8", "content-disposition": `attachment; filename="kashmiri-ocr-chunk-labels-${day}.jsonl"` } });
+  }
   if (u.searchParams.get("view") === "page_answers") {
     // every decision on the guided page review: one row per person per step
     const rows = await q(

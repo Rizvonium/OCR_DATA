@@ -6,7 +6,7 @@ const get = (url: string) => fetch(url, { cache: "no-store" }).then((r) => r.jso
 const post = (body: unknown) => fetch("/api/admin", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) }).then((r) => r.json());
 const day = (s?: string | null) => (s ? new Date(s).toLocaleString(undefined, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : "—");
 const VERDICT: Record<string, string> = { correct: "✓ correct", incorrect: "✗ incorrect", skip: "skipped" };
-type Tab = "people" | "pages" | "answers" | "photos" | "data";
+type Tab = "people" | "groups" | "pages" | "answers" | "photos" | "data";
 
 export default function Admin() {
   const [state, setState] = useState<"loading" | "out" | "in">("loading");
@@ -46,11 +46,12 @@ export default function Admin() {
         <button className="btn ghost" onClick={signOut}>Sign out of admin</button>
       </div>
       <div className="tabs admin-tabs">
-        {([["people", "People"], ["pages", "Pages"], ["answers", "Word answers"], ["photos", "Photos"], ["data", "Data & export"]] as [Tab, string][]).map(([t, l]) => (
+        {([["people", "People"], ["groups", "Chunk labels"], ["pages", "Segmentation"], ["answers", "Word answers"], ["photos", "Photos"], ["data", "Data & export"]] as [Tab, string][]).map(([t, l]) => (
           <button key={t} aria-pressed={tab === t} onClick={() => setTab(t)}>{l}</button>
         ))}
       </div>
       {tab === "people" && <People onOpen={openPerson} />}
+      {tab === "groups" && <Groups />}
       {tab === "pages" && <Pages />}
       {tab === "answers" && <Answers who={who} clearWho={() => setWho(null)} />}
       {tab === "photos" && <Photos />}
@@ -102,6 +103,38 @@ function People({ onOpen }: { onOpen: (code: string) => void }) {
             ))}</tbody>
           </table>
         )}
+      </div>
+    </>
+  );
+}
+
+function Groups() {
+  const [d, setD] = useState<any>(null);
+  useEffect(() => { get("/api/admin?view=groups").then(setD); }, []);
+  if (!d) return <p className="muted">Loading…</p>;
+  const t = d.totals;
+  return (
+    <>
+      <p className="muted small">Groups of look-alike chunks. {t.labelled_groups} of {t.groups} groups labelled, covering {t.labelled_chunks.toLocaleString()} of {t.chunks.toLocaleString()} chunks.
+        <b> Same</b> = how many people decided exactly alike. <a href="/api/export?format=csv&view=chunk_labels">Download chunk labels (CSV)</a></p>
+      <div className="card" style={{ overflowX: "auto" }}>
+        <table>
+          <thead><tr><th>Group</th><th>Chunks</th><th>Proposed</th><th>Person</th><th>Decision</th><th className="num">Same</th><th>When</th></tr></thead>
+          <tbody>{d.rows.map((r: any, i: number) => (
+            <tr key={i}>
+              <td className="mono small">{r.id}<br /><span className="muted">{r.size} chunks</span></td>
+              <td><div className="mini-tiles">{r.members.slice(0, 8).map((m: any) => (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img key={m.chunk} src={m.clean_url} alt="" className={r.odd.includes(m.chunk) ? "odd" : ""} />
+              ))}</div></td>
+              <td className="ks" style={{ fontSize: 20 }}>{r.proposed_text}</td>
+              <td><b>{r.handle}</b> <span className="mono muted small">{r.code}</span></td>
+              <td>{VERDICT[r.verdict]}{r.correction && <> → <span className="ks" style={{ fontSize: 20 }}>{r.correction}</span></>}{r.odd.length ? <><br /><span className="small muted">{r.odd.length} marked different</span></> : null}</td>
+              <td className="num">{r.same}</td>
+              <td className="small">{day(r.updated_at)}</td>
+            </tr>
+          ))}</tbody>
+        </table>
       </div>
     </>
   );
@@ -249,7 +282,8 @@ function Data() {
         <h3>Download</h3>
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
           <a className="btn primary" href={ex("format=csv&view=answers")}>Answers sheet (CSV): one row per answer</a>
-          <a className="btn primary" href={ex("format=csv&view=page_answers")}>Page review sheet (CSV): every decision</a>
+          <a className="btn primary" href={ex("format=csv&view=chunk_labels")}>Chunk labels (CSV): the labelled dataset</a>
+          <a className="btn" href={ex("format=csv&view=page_answers")}>Segmentation decisions (CSV)</a>
           <a className="btn" href={ex("format=csv")}>Pictures sheet (CSV)</a>
           <a className="btn" href={ex("status=verified,corrected")}>Training data (JSONL): verified + corrected</a>
           <a className="btn" href={ex("status=all")}>Everything with every answer (JSONL)</a>

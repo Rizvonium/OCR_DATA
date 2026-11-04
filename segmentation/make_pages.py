@@ -81,7 +81,10 @@ def main():
                         own = np.isin(labels[ya:yb, xa:xb], part["uids"])  # this piece's own ink only
                         clean = np.where(own, np.minimum(norm[ya:yb, xa:xb], 200), 255).astype(np.uint8)
                         name = f"clean/{pid}-L{li + 1:02d}-C{len(chunks) + 1:02d}.webp"
-                        Image.fromarray(clean).save(os.path.join(a.out, name), quality=85)
+                        ci = Image.fromarray(clean)
+                        if ci.height > 72:  # small enough for a grid of many; still sharp on screen
+                            ci = ci.resize((max(1, round(ci.width * 72 / ci.height)), 72), Image.LANCZOS)
+                        ci.save(os.path.join(a.out, name), quality=72)
                         chunks.append({"box": [x0, y0, x1, y1], "text": model.read(clean), "word": wi, "clean": name})
                 bs = np.array([c["box"] for c in chunks])
                 rec_lines.append({

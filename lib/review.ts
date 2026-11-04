@@ -124,10 +124,12 @@ export async function myStats(cid: string) {
             (select count(*)::int from leaderboard) as ranked,
             (select count(*)::int from uploads u where u.contributor_id = f.id) as photos,
             (select count(*)::int from page_answers pa where pa.contributor_id = f.id and pa.level = 'page') as pages,
-            (select count(*)::int from page_answers pa where pa.contributor_id = f.id and pa.correction is not null) as page_corrections,
+            (select count(*)::int from page_answers pa where pa.contributor_id = f.id and pa.correction is not null)
+              + (select count(*)::int from group_answers ga where ga.contributor_id = f.id and ga.correction is not null) as page_corrections,
             (select count(distinct d)::int from (
                select date_trunc('day', created_at) d from answers where contributor_id = f.id
-               union select date_trunc('day', created_at) from page_answers where contributor_id = f.id) days) as days
+               union select date_trunc('day', created_at) from page_answers where contributor_id = f.id
+               union select date_trunc('day', created_at) from group_answers where contributor_id = f.id) days) as days
      from contributor_flags f left join leaderboard l on l.code = f.code where f.id = $1`, [cid]);
   if (!s) return null;
   s.corrections = (s.corrections || 0) + (s.page_corrections || 0);

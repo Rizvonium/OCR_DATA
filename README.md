@@ -19,27 +19,43 @@ combined into a clean dataset for training Kashmiri OCR.
 Reviewers are never told the font, the dataset or which pictures are check items: none of it is sent
 to the browser, and picture file names are hashes.
 
-## Guided page review (the main Review screen)
+## Two tasks on the Review screen
 
-A page goes through three levels, top to bottom, always with the context on top and the unit below:
+### Label chunks (main task)
 
-1. **Lines** — the page with the lines the segmenter found as numbered bands. *Are the lines correct?*
-   If not: tap inside a band to split it, tap between two bands to join them (Zoom for precision).
-2. **Chunks of each line** — the page with that line in blue, and the line with its chunks. A chunk is a
-   PAW: one connected piece of a word with its own dots and vowel signs (ضرؤرژکنہٕ = ضر · ؤ · ر · ژ · کنہٕ).
-   Chunks of the same word share a colour (words = groups split at the wider gaps). *Nothing missing,
-   every dot inside its box?* If not: ✂ split, ⊕ join, ✕ remove a speck.
-3. **Text of each chunk** — the line with that chunk in blue, and the chunk three ways: **original**,
-   **heat map**, and **cleaned** (only the chunk's own ink components: anything else touching its box, a
-   neighbouring piece or a mark from another line, is erased), with the word model's reading of the
-   cleaned crop. *Does the text match exactly?* If not: type it on the Kashmiri keyboard. "The box is wrong"
-   jumps back to fixing that line's chunks.
+Every chunk (PAW: one connected piece of a word with its own dots and vowel signs) from every page is
+put into one pool, and chunks that look the same are grouped (`segmentation/group_chunks.py`). The
+same printed piece repeats a lot, so one decision labels many chunks:
 
-Then the next chunk, line and page. **Heat map** shows the cleaned ink (shadow and paper removed) the
-segmenter works on. ‹ Back changes any earlier decision; a reload resumes where you were. Every decision
-is saved with who made it (`page_answers`), counts 1 point and earns badges (🌱 10 answers, 🍂 100,
-🍁 500, 🏔️ 1,000, 📄 first page, 📚 10 pages, ✍️ 10 corrections, 🖋️ 100, 📅 3 days, 📷 5 photos).
-Admin → **Pages** shows each page's decisions per person, and how many people decided exactly alike.
+1. A grid of look-alike chunks (cleaned crops: only each chunk's own ink). *Are these all the same?*
+   **Yes** → step 2. **Some are different** → tap every one that is not the same, then step 2.
+2. One chunk large with the proposed text (the word model's most common reading in the group).
+   *Is this what they say?* **Correct** → next group. **Incorrect** → type the right text: it labels
+   every chunk of the group not marked different. Can't tell → skip.
+
+‹ Back / Next › go through earlier groups to change an answer. Grouping first requires the same **mark
+signature** (number and place of dots and signs, so ا آ أ, و ز ژ never mix), then a close match of the
+whole piece **and** of its marks (each mark also compared enlarged, so a madd and a hamza differ).
+On the 30 starter pages: 4,514 chunks → 3,226 groups (338 of 2–30 look-alikes covering 1,626 chunks;
+the rest are single chunks for now and find partners as more pages come in).
+
+Admin → **Chunk labels**; export **Chunk labels (CSV)**: one row per chunk per person, with the text,
+`agree` (how many people gave that chunk the same text), the group and the page.
+
+### Check segmentation
+
+A page goes through two levels, always with the context on top:
+
+1. **Lines** — the page with the lines found as numbered bands. *Are the lines correct?* If not: tap
+   inside a band to split it, tap between two bands to join them (Zoom for precision).
+2. **Chunks of each line** — the page with that line in blue, and the line with its chunks (same word,
+   same colour). *Nothing missing, every dot inside its box?* If not: ✂ split, ⊕ join, ✕ remove.
+
+**Heat map** shows the cleaned ink the segmenter works on. Admin → **Segmentation** shows each page's
+decisions per person and how many decided alike.
+
+Every decision in both tasks is saved with who made it, counts 1 point and earns badges (🌱 10, 🍂 100,
+🍁 500, 🏔️ 1,000 answers, 📄 first page, 📚 10 pages, ✍️ 10 corrections, 🖋️ 100, 📅 3 days, 📷 5 photos).
 
 Pages to review come from `segmentation/make_pages.py` (segmenter + word model + heat map):
 
@@ -49,9 +65,12 @@ python3 segmentation/make_pages.py PAGES_DIR out/pages --dataset book1 --font "G
 ```bash
 npm run import:pages -- out/pages --starter
 ```
+```bash
+python3 segmentation/group_chunks.py data/groups/manifest.jsonl data/pages/manifest.jsonl --singletons
+```
 
 `--starter` adds them to `data/pages/manifest.jsonl`; the deployed app loads them on its next start.
-18 starter pages (3 in each of six fonts, 263 lines, 2,696 chunks) are included.
+30 starter pages (5 in each of six fonts, 442 lines, 4,514 chunks) are included, with their groups.
 
 ## Run it on your computer
 

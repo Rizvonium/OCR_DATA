@@ -1,5 +1,6 @@
 "use client";
-// Guided page review: the page with its lines -> each line with its chunks -> each chunk with its text.
+// Segmentation check: the page with its lines -> each line with its chunks (-> each chunk's text, only
+// with withText; normally text is labelled by look-alike groups in GroupReview).
 // Every decision is saved at once (POST /api/page/answer); Back goes to any earlier step to change it.
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api, useApp, type Stats } from "./AppState";
@@ -103,7 +104,7 @@ function ChunkView({ page, chunk }: { page: Page; chunk: Chunk }) {
 }
 
 // ------------------------------------------------------------------ the flow
-export function PageReview() {
+export function PageReview({ withText = false }: { withText?: boolean }) {
   const { stats, setStats } = useApp();
   const [page, setPage] = useState<Page | null>(null);
   const [none, setNone] = useState(false);
@@ -139,11 +140,12 @@ export function PageReview() {
     const s: Step[] = [{ kind: "lines" }];
     lines.forEach((_, i) => {
       s.push({ kind: "chunks", line: i });
-      chunksOf(i).forEach((__, j) => s.push({ kind: "text", line: i, chunk: j }));
+      // text is labelled separately, by groups of look-alike chunks (GroupReview); here only the cutting
+      if (withText) chunksOf(i).forEach((__, j) => s.push({ kind: "text", line: i, chunk: j }));
     });
     s.push({ kind: "done" });
     return s;
-  }, [page, lines, chunksOf]);
+  }, [page, lines, chunksOf, withText]);
   const step = steps[idx];
 
   const load = useCallback(async () => {

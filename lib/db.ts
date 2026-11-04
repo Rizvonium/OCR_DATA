@@ -61,6 +61,7 @@ async function connect(): Promise<Query> {
   }
   await seedStarterData(query);
   await seedStarterPages(query);
+  await seedStarterGroups(query);
   return query;
 }
 
@@ -138,6 +139,34 @@ async function seedStarterPages(query: Query) {
        and not exists (select 1 from jsonb_array_elements_text(($2::text)::jsonb) m(id) where m.id = p.id)
        and not exists (select 1 from page_answers a where a.page_id = p.id)`, [datasets, JSON.stringify(rows.map((r) => r.id))]);
   await query("insert into app_meta (k, v) values ('starter_pages', $1) on conflict (k) do update set v = excluded.v", [hash]);
+}
+
+// Loads data/groups/manifest.jsonl (look-alike chunk groups) when the file changes. Groups that left
+// the file are deleted only if nobody has answered them.
+async function seedStarterGroups(query: Query) {
+  if (process.env.SEED_DEMO === "0") return;
+  const p = file("data/groups/manifest.jsonl");
+  if (!fs.existsSync(p)) return;
+  const text = fs.readFileSync(p, "utf8");
+  const hash = crypto.createHash("sha256").update(text).digest("hex");
+  const [seen] = await query<{ v: string }>("select v from app_meta where k = 'starter_groups'");
+  if (seen?.v === hash) return;
+  const rows = text.split("\n").filter(Boolean).map((l) => JSON.parse(l)).map((g) => ({
+    id: g.id, members: g.members.map((m: any) => ({ chunk: m.chunk, page: m.page, line: m.line, chunk_index: m.chunk_index, clean_url: m.clean_url, text: m.text })),
+    proposed_text: g.proposed_text || "", size: g.size, fonts: g.fonts || [],
+  }));
+  for (let i = 0; i < rows.length; i += 500) {
+    await query(
+      `insert into chunk_groups (id, members, proposed_text, size, fonts)
+       select id, members, proposed_text, size, fonts from jsonb_to_recordset(($1::text)::jsonb)
+         as x(id text, members jsonb, proposed_text text, size int, fonts jsonb)
+       on conflict (id) do update set members = excluded.members, proposed_text = excluded.proposed_text, size = excluded.size, fonts = excluded.fonts
+         where not exists (select 1 from group_answers a where a.group_id = excluded.id)`, [JSON.stringify(rows.slice(i, i + 500))]);
+  }
+  await query(
+    `delete from chunk_groups g where not exists (select 1 from jsonb_array_elements_text(($1::text)::jsonb) m(id) where m.id = g.id)
+       and not exists (select 1 from group_answers a where a.group_id = g.id)`, [JSON.stringify(rows.map((r) => r.id))]);
+  await query("insert into app_meta (k, v) values ('starter_groups', $1) on conflict (k) do update set v = excluded.v", [hash]);
 }
 
 export function db(): Promise<Query> {

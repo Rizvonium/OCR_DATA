@@ -308,3 +308,17 @@ tr.me td{background:var(--accent-soft)}
 .triple figure.dark svg{background:#000}
 .triple figcaption{font-size:12px;font-weight:600;color:#5e554a}
 .noclean{height:140px;width:100%;display:grid;place-items:center;font-size:12px;color:#7b7266;background:#fff;border-radius:6px}
+/* ------------------------------------------------------------ look-alike groups */
+.task-switch{display:flex;justify-content:center;margin:0 auto 14px;max-width:720px}
+.grid-tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(78px,1fr));gap:8px;padding:16px;background:var(--paper)}
+.tile{position:relative;height:78px;border-radius:10px;border:2px solid transparent;background:#fff;display:grid;place-items:center;padding:6px;box-shadow:0 2px 8px rgba(31,27,22,.12);cursor:default}
+.tile img{max-width:100%;max-height:100%;object-fit:contain}
+.marking .tile{cursor:pointer}
+.marking .tile:hover{border-color:var(--line-strong)}
+.tile.odd{border-color:var(--accent);background:#fbe9e2}
+.tile.odd img{opacity:.45}
+.tile .x{position:absolute;top:2px;right:6px;color:var(--accent);font-weight:800;font-size:18px}
+.stage img.rep{height:150px;width:auto;max-width:100%;object-fit:contain;background:#fff;border-radius:8px;padding:10px;box-shadow:0 8px 26px rgba(31,27,22,.18)}
+.mini-tiles{display:flex;flex-wrap:wrap;gap:3px;max-width:260px}
+.mini-tiles img{height:28px;background:#fff;border-radius:3px;border:1px solid var(--line)}
+.mini-tiles img.odd{border-color:var(--accent);opacity:.5}
