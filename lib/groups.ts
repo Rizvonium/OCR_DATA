@@ -15,6 +15,8 @@ export const LABELS_PER_CHUNK = Number(process.env.LABELS_PER_CHUNK || 3);
 const CANDIDATES = `
   with per_chunk as (select chunk, count(*) as n, bool_or(contributor_id = $1) as mine from chunk_labels group by chunk),
   my_families as (select distinct g.family from group_answers a join chunk_groups g on g.id = a.group_id where a.contributor_id = $1),
+  text_done as (                           -- how much of each reading (ا, ر, و ...) the whole team has labelled
+    select g.proposed_text, count(*) as n from chunk_labels l join chunk_groups g on g.id = l.group_id group by g.proposed_text),
   my_recent as (                           -- what this person's last 8 groups said: not again right away
     select g.proposed_text from group_answers a join chunk_groups g on g.id = a.group_id
     where a.contributor_id = $1 order by a.updated_at desc limit 8),
@@ -34,7 +36,8 @@ export async function nextGroup(cid: string, exclude: string[] = [], wantId?: st
      select id, members, proposed_text, jsonb_array_length(members) as size from open o
      where not (id = any($2::text[])) ${extra}
      order by (o.proposed_text in (select proposed_text from my_recent)), (o.family in (select family from my_families)),
-              o.fewest, jsonb_array_length(o.members) desc, random() limit 1`,
+              o.fewest, coalesce((select n from text_done d where d.proposed_text = o.proposed_text), 0),
+              jsonb_array_length(o.members) desc, random() limit 1`,
     [cid, exclude, ...params]);
   const [want] = wantId ? await pick("and id = $3", [wantId]) : [];
   const [g] = want ? [want] : await pick("", []);

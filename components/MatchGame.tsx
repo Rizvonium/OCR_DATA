@@ -110,7 +110,7 @@ export function MatchGame() {
     <div className="review">
       <div className="status-line">
         <span className="where">Match the same ones</span>
-        <span className="muted small">{left.toLocaleString()} boards left</span>
+        <span className="muted small">{left.toLocaleString()} left for you</span>
         <span><b>{stats?.points ?? 0}</b> pts</span>
       </div>
       <article className="card task">

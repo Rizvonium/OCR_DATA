@@ -103,7 +103,7 @@ export function GroupReview() {
       <div className="status-line">
         <button className="btn ghost navbtn" onClick={back} disabled={busy || history.length === 0 || pos === 0}>‹ Back</button>
         <span className="where">{cur.members.length > 1 ? `${cur.members.length} look-alike chunks` : "A single chunk"}</span>
-        <span className="muted small">{left.toLocaleString()} groups left</span>
+        <span className="muted small">{left.toLocaleString()} left for you</span>
         <span><b>{stats?.points ?? 0}</b> pts</span>
         <button className="btn ghost navbtn" onClick={next} disabled={busy || pos === null}>Next ›</button>
       </div>

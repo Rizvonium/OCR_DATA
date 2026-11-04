@@ -162,7 +162,6 @@ create table if not exists chunk_groups (
 );
 create index if not exists chunk_groups_size on chunk_groups (size desc);
 alter table chunk_groups add column if not exists family text;  -- groups cut from one big look-alike cluster
-alter table match_boards add column if not exists skeleton text; -- the letter family a Match board is about
 
 -- One person's decision on a group: which members are NOT the same (odd), and whether the text is right.
 create table if not exists group_answers (
@@ -209,6 +208,7 @@ create table if not exists match_boards (
   texts      jsonb not null default '[]'::jsonb,
   created_at timestamptz not null default now()
 );
+alter table match_boards add column if not exists skeleton text; -- the letter family a Match board is about
 -- sets: [[chunk, chunk, ...], ...] each popped together = "one and the same"; rest: left as all different
 create table if not exists match_answers (
   id             bigint generated always as identity primary key,
