@@ -1,5 +1,6 @@
 "use client";
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
+import { onSaved, startQueue } from "./saveQueue";
 
 export type Me = { id: string; code: string; handle: string; status: string; email: string | null };
 export type Stats = {
@@ -13,18 +14,22 @@ const C = createContext<Ctx>({ remembered: null, preview: false, me: null, stats
 
 export function AppState({ children }: { children: React.ReactNode }) {
   const [me, setMe] = useState<Me | null>(null);
-  const [stats, setStats] = useState<Stats | null>(null);
+  const [stats, setStatsRaw] = useState<Stats | null>(null);
+  // saves return only this person's own numbers (no rank): merge them into what we have
+  const setStats = useCallback((s: Stats) => setStatsRaw((old) => ((s as any)?.partial && old ? { ...old, ...s } : s)), []);
   const [loaded, setLoaded] = useState(false);
   const [preview, setPreview] = useState(false);
   const [remembered, setRemembered] = useState<string | null>(null);
   const refresh = useCallback(async () => {
     try {
       const r = await fetch("/api/session", { cache: "no-store" }).then((r) => r.json());
-      setMe(r.me); setStats(r.stats ?? null); setPreview(!!r.preview); setRemembered(r.remembered?.handle ?? null);
+      setMe(r.me); setStatsRaw(r.stats ?? null); setPreview(!!r.preview); setRemembered(r.remembered?.handle ?? null);
       if (r.me?.handle) { try { localStorage.setItem("ks_last_user", r.me.handle); } catch {} }
     } finally { setLoaded(true); }
   }, []);
   useEffect(() => { refresh(); }, [refresh]);
+  // background saves: send what an earlier visit left, and take the points from every save's reply
+  useEffect(() => { startQueue(); return onSaved((d) => { if (d?.stats) setStats(d.stats); }); }, [setStats]);
   return <C.Provider value={{ remembered, preview, me, stats, loaded, refresh, setStats }}>{children}</C.Provider>;
 }
 export const useApp = () => useContext(C);

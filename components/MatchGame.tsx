@@ -3,7 +3,8 @@
 // they burst away. Pop as many sets as you see, then Submit (the rest stay unsorted). "Not a chunk"
 // flags tiles that are only a mark or a speck, not a proper piece of a word.
 import { useCallback, useEffect, useRef, useState } from "react";
-import { api, useApp, type Stats } from "./AppState";
+import { api, useApp } from "./AppState";
+import { enqueue } from "./saveQueue";
 import { Leaf } from "./icons";
 
 type Tile = { chunk: string; clean_url: string };
@@ -12,7 +13,7 @@ type Action = { type: "set" | "junk"; ids: string[] };
 const COLORS = ["#c0502a", "#2f7a4a", "#3b82c4", "#8b5cf6", "#d4a017", "#d9468f"];
 
 export function MatchGame() {
-  const { stats, setStats } = useApp();
+  const { stats } = useApp();
   const [board, setBoard] = useState<Board | null>(null);
   const [left, setLeft] = useState(0);
   const [none, setNone] = useState(false);
@@ -27,15 +28,23 @@ export function MatchGame() {
   const skipSave = useRef(true);
   const [saved, setSaved] = useState<"" | "saving" | "saved" | "error">("");
 
-  const load = useCallback(async (exclude: string[] = []) => {
-    const r = await api<{ board: Board | null; left: number; saved: { sets: string[][]; junk: string[] } | null }>(`/api/match?exclude=${encodeURIComponent(exclude.join(","))}`);
+  type Got = { board: Board | null; left: number; saved: { sets: string[][]; junk: string[] } | null };
+  const upcoming = useRef<Promise<Got | null> | null>(null); // the next board, fetched in advance
+  const played = useRef<string[]>([]);                        // submitted here (server may not have saved them yet)
+  const fetchBoard = useCallback(async (exclude: string[]) => {
+    const r = await api<Got>(`/api/match?exclude=${encodeURIComponent(exclude.slice(-40).join(","))}`);
+    for (const t of r.board?.tiles || []) { const im = new Image(); im.src = t.clean_url; }
+    return r;
+  }, []);
+  const load = useCallback(async (exclude: string[] = [], got?: Got | null) => {
+    const r = got ?? await fetchBoard(exclude);
     setLeft(r.left); setBoard(r.board); setNone(!r.board);
+    upcoming.current = r.board ? fetchBoard([...played.current, r.board.id]).catch(() => null) : null;
     // a board started before (e.g. before a reload) comes back with its pops and flags
     const restored: Action[] = r.saved ? [...r.saved.sets.map((ids) => ({ type: "set" as const, ids })), ...r.saved.junk.map((id) => ({ type: "junk" as const, ids: [id] }))] : [];
     skipSave.current = true; // loading a board is not a change to save
     setActions(restored); setSel([]); setJunkMode(false); setErr(""); shownAt.current = Date.now();
-    for (const t of r.board?.tiles || []) { const im = new Image(); im.src = t.clean_url; }
-  }, []);
+  }, [fetchBoard]);
   useEffect(() => { load().catch((e) => setErr(e.message)); }, [load]);
 
   const sets = actions.filter((a) => a.type === "set").map((a) => a.ids);
@@ -68,19 +77,24 @@ export function MatchGame() {
     if (skipSave.current) { skipSave.current = false; return; }
     setSaved("saving");
     const t = setTimeout(() => {
-      api("/api/match/answer", { method: "POST", json: { boardId: board.id, sets, junk, done: false, ms: Date.now() - shownAt.current } })
-        .then(() => setSaved("saved")).catch(() => setSaved("error"));
+      // into the background save queue: kept on the phone and sent as soon as possible
+      enqueue("/api/match/answer", "POST", { boardId: board.id, sets, junk, done: false, ms: Date.now() - shownAt.current });
+      setSaved("saved");
     }, 250);
     return () => clearTimeout(t);
   }, [actions]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Submit goes to the background save queue; the next board, fetched in advance, appears at once.
   async function submit() {
     if (!board) return;
     setBusy(true); setErr("");
+    enqueue("/api/match/answer", "POST", { boardId: board.id, sets, junk, done: true, ms: Date.now() - shownAt.current });
+    played.current = [...played.current, board.id].slice(-40);
+    setSaved("");
     try {
-      const r = await api<{ stats: Stats }>("/api/match/answer", { method: "POST", json: { boardId: board.id, sets, junk, done: true, ms: Date.now() - shownAt.current } });
-      setStats(r.stats); setSaved("");
-      await load([board.id]);
+      let got = upcoming.current ? await upcoming.current : null;
+      if (!got || (got.board && played.current.includes(got.board.id))) got = await fetchBoard(played.current);
+      await load(played.current, got);
     } catch (e: any) { setErr(e.message); } finally { setBusy(false); }
   }
 
@@ -139,7 +153,7 @@ export function MatchGame() {
           </button>
         </div>
         <p className="muted small" style={{ textAlign: "center", margin: "0 0 14px" }}>
-          {saved === "saving" ? "Saving…" : saved === "saved" ? "✓ Saved — safe to leave and come back" : saved === "error" ? "⚠ Not saved: no connection. Your next pop will try again." : "Unsorted tiles stay as they are · 1 point per set and per flag"}
+          {saved === "saving" ? "Saving…" : saved === "saved" ? "✓ Saved — safe to leave and come back" : "Unsorted tiles stay as they are · 1 point per set and per flag"}
         </p>
         {err && <p className="err" style={{ padding: "0 22px 16px" }}>{err}</p>}
       </article>

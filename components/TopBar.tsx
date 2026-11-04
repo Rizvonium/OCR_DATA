@@ -4,12 +4,14 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useApp } from "./AppState";
 import { Leaf, Moon, Sun } from "./icons";
+import { useSaveState } from "./saveQueue";
 
 const LINKS = [["/", "Review"], ["/upload", "Photos", "Add photos"], ["/leaderboard", "Board", "Leaderboard"], ["/guide", "Guide", "How to judge"], ["/me", "Me", "Profile"]];
 
 export function TopBar() {
   const path = usePathname();
   const { me, stats, preview } = useApp();
+  const save = useSaveState();
   const [dark, setDark] = useState(false);
   useEffect(() => {
     const t = document.documentElement.dataset.theme;
@@ -40,6 +42,11 @@ export function TopBar() {
           ))}
         </nav>}
         <div className="top-right">
+          {me && (save.pending > 0 || save.status === "error") && (
+            <span className={`save-badge ${save.status}`} title={save.error || ""} role="status">
+              {save.status === "offline" ? `⏳ ${save.pending} waiting for connection` : save.status === "error" ? "⚠ " + (save.error || "Not saved") : `Saving ${save.pending}…`}
+            </span>
+          )}
           {me && stats && (
             <Link href="/me" className="chip hide-sm" style={{ textDecoration: "none", color: "inherit" }} title="Your points and rank">
               <span className="dot" />{stats.points ?? 0} pts{stats.points ? ` · #${stats.rank}` : ""}

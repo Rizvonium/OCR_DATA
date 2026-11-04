@@ -185,6 +185,23 @@ alter table group_answers add column if not exists shown jsonb;
 alter table group_answers drop constraint if exists group_answers_verdict_check;
 alter table group_answers add constraint group_answers_verdict_check check (verdict in ('correct', 'incorrect', 'skip', 'not_chunk'));
 
+-- Who has labelled which chunk (kept in step with group_answers by lib/groups.ts): lets the app pick
+-- the next group without re-reading every answer.
+create table if not exists chunk_labels (
+  chunk          text not null,
+  contributor_id uuid not null references contributors(id) on delete cascade,
+  group_id       text not null references chunk_groups(id) on delete cascade,
+  primary key (chunk, contributor_id)
+);
+create index if not exists chunk_labels_by_contributor on chunk_labels (contributor_id);
+create index if not exists group_answers_by_group on group_answers (group_id);
+-- filled from the answers given before this table existed (does nothing once filled)
+insert into chunk_labels (chunk, contributor_id, group_id)
+select distinct on (m->>'chunk', a.contributor_id) m->>'chunk', a.contributor_id, a.group_id
+from group_answers a join chunk_groups g on g.id = a.group_id, jsonb_array_elements(g.members) m
+where a.verdict <> 'skip' and not (a.odd ? (m->>'chunk')) and (a.shown is null or a.shown ? (m->>'chunk'))
+on conflict do nothing;
+
 -- Match game: boards of look-alike chunks mixed across fonts (segmentation/make_boards.py).
 create table if not exists match_boards (
   id         text primary key,
@@ -223,6 +240,7 @@ alter table pages enable row level security;
 alter table page_answers enable row level security;
 alter table chunk_groups enable row level security;
 alter table group_answers enable row level security;
+alter table chunk_labels enable row level security;
 alter table match_boards enable row level security;
 alter table match_answers enable row level security;
 

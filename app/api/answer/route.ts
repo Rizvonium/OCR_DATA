@@ -1,6 +1,6 @@
 import { body, fail, json } from "@/lib/http";
 import { currentContributor } from "@/lib/identity";
-import { myStats, submitAnswer, updateAnswer } from "@/lib/review";
+import { quickStats, submitAnswer, updateAnswer } from "@/lib/review";
 
 export const dynamic = "force-dynamic";
 
@@ -14,7 +14,7 @@ export async function POST(req: Request) {
     correction: typeof b.correction === "string" ? b.correction : undefined, badCrop: !!b.badCrop,
   });
   if (!r.ok) return fail(r.error, r.status);
-  return json({ gold: r.gold, stats: await myStats(me.id) });
+  return json({ gold: r.gold, stats: await quickStats(me.id) });
 }
 
 // Change an earlier answer of this run.
@@ -28,5 +28,5 @@ export async function PATCH(req: Request) {
     correction: typeof b.correction === "string" ? b.correction : undefined, badCrop: !!b.badCrop,
   });
   if (!r.ok) return fail(r.error, r.status);
-  return json({ ok: true, stats: await myStats(me.id) });
+  return json({ ok: true, stats: await quickStats(me.id) });
 }

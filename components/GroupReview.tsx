@@ -2,7 +2,8 @@
 // Label look-alike chunks in one go: "Are these all the same?" (tap the ones that are not), then
 // "Is this what they say?" (type the right text if not). One decision labels the whole group.
 import { useCallback, useEffect, useRef, useState } from "react";
-import { api, useApp, type Stats } from "./AppState";
+import { api, useApp } from "./AppState";
+import { enqueue } from "./saveQueue";
 import { Check, Cross, Leaf } from "./icons";
 import { Keyboard, applyKey, usePhoneKeyboard } from "./Keyboard";
 import { useLeaveWarning } from "./useLeaveWarning";
@@ -13,8 +14,10 @@ type Done = { group: Group; odd: string[]; verdict: string; correction?: string 
 type Phase = "same" | "mark" | "text" | "fix";
 
 export function GroupReview() {
-  const { stats, setStats } = useApp();
+  const { stats } = useApp();
   const [group, setGroup] = useState<Group | null>(null);
+  const upcoming = useRef<Promise<Group | null> | null>(null); // the next group, fetched in advance
+  const answered = useRef<string[]>([]);                         // answered here (server may not have saved them yet)
   const [left, setLeft] = useState(0);
   const [none, setNone] = useState(false);
   const [phase, setPhase] = useState<Phase>("same");
@@ -35,38 +38,48 @@ export function GroupReview() {
     setPhase(g && g.members.length < 2 ? "text" : "same"); shownAt.current = Date.now();
   }, []);
 
-  const fetchNext = useCallback(async (exclude: string[] = []) => {
-    // reopen the group that was on screen before a reload; otherwise the next one
-    let want = ""; try { want = exclude.length ? "" : localStorage.getItem("ks_group") || ""; } catch {}
-    const r = await api<{ group: Group | null; left: number }>(`/api/group?exclude=${encodeURIComponent(exclude.join(","))}${want ? `&id=${encodeURIComponent(want)}` : ""}`);
-    setLeft(r.left);
-    try { if (r.group) localStorage.setItem("ks_group", r.group.id); else localStorage.removeItem("ks_group"); } catch {}
+  // fetch a group (and preload its pictures); `first` also reopens the one on screen before a reload
+  // and asks for the "groups left" figure, which is then counted down here instead of on the server
+  const fetchGroup = useCallback(async (exclude: string[], first = false) => {
+    let want = ""; try { want = first ? localStorage.getItem("ks_group") || "" : ""; } catch {}
+    const r = await api<{ group: Group | null; left: number | null }>(
+      `/api/group?count=${first ? 1 : 0}&exclude=${encodeURIComponent(exclude.slice(-40).join(","))}${want ? `&id=${encodeURIComponent(want)}` : ""}`);
+    if (r.left !== null) setLeft(r.left);
     for (const m of r.group?.members || []) { const im = new Image(); im.src = m.clean_url; }
     return r.group;
   }, []);
-  useEffect(() => { fetchNext().then((g) => { setGroup(g); setNone(!g); open(g); }).catch((e) => setErr(e.message)); }, [fetchNext, open]);
+  const show = useCallback((g: Group | null) => {
+    setGroup(g); setNone(!g); open(g);
+    try { if (g) localStorage.setItem("ks_group", g.id); else localStorage.removeItem("ks_group"); } catch {}
+    // fetch the one after it now, while this one is being looked at
+    upcoming.current = g ? fetchGroup([...answered.current, g.id]).catch(() => null) : null;
+  }, [fetchGroup, open]);
+  useEffect(() => { fetchGroup([], true).then(show).catch((e) => setErr(e.message)); }, [fetchGroup, show]);
 
   const same = cur ? cur.members.filter((m) => !odd.has(m.chunk)) : [];
   useLeaveWarning((phase === "mark" && odd.size > 0) || (phase === "fix" && !!text.trim()) || busy);
 
+  // The answer goes to the background save queue (sent in order, retried until it is saved, kept
+  // across reloads) and the next group, fetched in advance, appears at once.
   async function save(verdict: "correct" | "incorrect" | "skip" | "not_chunk", correction?: string) {
     if (!cur) return;
-    setBusy(true); setErr("");
+    setErr("");
+    enqueue("/api/group/answer", "POST", { groupId: cur.id, odd: [...odd], shown: cur.members.map((m) => m.chunk), verdict, correction, ms: Date.now() - shownAt.current });
+    const rec: Done = { group: cur, odd: [...odd], verdict, correction };
+    if (past && pos !== null) {
+      setHistory((h) => h.map((x, i) => (i === pos ? rec : x)));
+      const n = pos + 1 < history.length ? pos + 1 : null;
+      setPos(n); open(n === null ? group : history[n].group, n === null ? undefined : history[n]);
+      return;
+    }
+    setHistory((h) => [...h, rec]);
+    answered.current = [...answered.current, cur.id].slice(-40);
+    setLeft((l) => Math.max(0, l - 1));
+    setBusy(true);
     try {
-      const r = await api<{ stats: Stats }>("/api/group/answer", {
-        method: "POST", json: { groupId: cur.id, odd: [...odd], shown: cur.members.map((m) => m.chunk), verdict, correction, ms: Date.now() - shownAt.current },
-      });
-      setStats(r.stats);
-      const rec: Done = { group: cur, odd: [...odd], verdict, correction };
-      if (past && pos !== null) {
-        setHistory((h) => h.map((x, i) => (i === pos ? rec : x)));
-        const n = pos + 1 < history.length ? pos + 1 : null;
-        setPos(n); open(n === null ? group : history[n].group, n === null ? undefined : history[n]);
-      } else {
-        setHistory((h) => [...h, rec]);
-        const g = await fetchNext([cur.id]);
-        setGroup(g); setNone(!g); open(g);
-      }
+      let g = upcoming.current ? await upcoming.current : null;
+      if (!g || answered.current.includes(g.id)) g = await fetchGroup(answered.current);
+      show(g);
     } catch (e: any) { setErr(e.message); } finally { setBusy(false); }
   }
 

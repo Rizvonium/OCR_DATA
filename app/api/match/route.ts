@@ -9,7 +9,7 @@ const PLAYS_PER_BOARD = Number(process.env.PLAYS_PER_BOARD || 3);
 export async function GET(req: Request) {
   const me = await currentContributor();
   if (!me) return fail("Sign in first.", 401);
-  const exclude = (new URL(req.url).searchParams.get("exclude") || "").split(",").filter(Boolean).slice(0, 20);
+  const exclude = (new URL(req.url).searchParams.get("exclude") || "").split(",").filter(Boolean).slice(0, 50);
   const tilesSql = "(select jsonb_agg(jsonb_build_object('chunk', t->>'chunk', 'clean_url', t->>'clean_url')) from jsonb_array_elements(tiles) t)";
   // a board this person started but did not submit comes back first, with what they already did
   const [open] = await q<any>(

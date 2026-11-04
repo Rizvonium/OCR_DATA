@@ -164,3 +164,30 @@ export async function updateAnswer(cid: string, a: AnswerIn): Promise<{ ok: true
   if (delta) await q("update samples set review_count = greatest(0, review_count - $2) where id = $1", [a.sampleId, delta]);
   return { ok: true };
 }
+
+/** This person's points and badge numbers, straight from their own rows (cheap: indexed by person).
+ *  Used after every save; the rank needs everyone's points and is computed only by myStats
+ *  (profile, leaderboard, page load). The client keeps the last rank it got. */
+export async function quickStats(cid: string) {
+  const [s] = await q<any>(
+    `select
+       (select count(*) from answers where contributor_id = $1 and verdict <> 'skip')::int as reviews,
+       ((select count(*) from answers where contributor_id = $1 and verdict <> 'skip')
+        + (select count(*) from page_answers where contributor_id = $1 and level <> 'page' and verdict <> 'skip')
+        + (select count(*) from group_answers where contributor_id = $1 and verdict <> 'skip')
+        + (select coalesce(sum(jsonb_array_length(sets) + jsonb_array_length(junk)), 0) from match_answers where contributor_id = $1))::int as points,
+       (select count(*) from answers where contributor_id = $1 and correction is not null)::int
+        + (select count(*) from page_answers where contributor_id = $1 and correction is not null)::int
+        + (select count(*) from group_answers where contributor_id = $1 and correction is not null)::int as corrections,
+       (select count(*) from page_answers where contributor_id = $1 and level = 'page')::int as pages,
+       (select count(*) from uploads where contributor_id = $1)::int as photos,
+       (select count(*) from answers where contributor_id = $1 and created_at > now() - interval '1 day')::int as today,
+       (select count(distinct d)::int from (
+          select date_trunc('day', created_at) d from answers where contributor_id = $1
+          union select date_trunc('day', created_at) from page_answers where contributor_id = $1
+          union select date_trunc('day', created_at) from group_answers where contributor_id = $1
+          union select date_trunc('day', created_at) from match_answers where contributor_id = $1) x) as days`, [cid]);
+  s.badges = badgesFor({ points: s.points, pages: s.pages, corrections: s.corrections, days: s.days, photos: s.photos });
+  s.partial = true; // no rank here
+  return s;
+}

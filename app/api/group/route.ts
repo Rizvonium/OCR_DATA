@@ -10,6 +10,6 @@ export async function GET(req: Request) {
   if (!me) return fail("Sign in first.", 401);
   if (me.status === "blocked") return fail("This profile is paused. Contact the project team.", 403);
   const u = new URL(req.url);
-  const exclude = (u.searchParams.get("exclude") || "").split(",").filter(Boolean).slice(0, 20);
-  return json(await nextGroup(me.id, exclude, u.searchParams.get("id")));
+  const exclude = (u.searchParams.get("exclude") || "").split(",").filter(Boolean).slice(0, 50);
+  return json(await nextGroup(me.id, exclude, u.searchParams.get("id"), u.searchParams.get("count") !== "0"));
 }

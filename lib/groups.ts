@@ -13,11 +13,7 @@ import { checkCorrection, normalizeKs } from "./kashmiri";
 export const LABELS_PER_CHUNK = Number(process.env.LABELS_PER_CHUNK || 3);
 
 const CANDIDATES = `
-  with labelled as (                       -- every chunk-label given so far: chunk, person
-    select distinct m->>'chunk' as chunk, a.contributor_id as who
-    from group_answers a join chunk_groups g on g.id = a.group_id, jsonb_array_elements(g.members) m
-    where a.verdict <> 'skip' and not (a.odd ? (m->>'chunk')) and (a.shown is null or a.shown ? (m->>'chunk'))),
-  per_chunk as (select chunk, count(*) as n, bool_or(who = $1) as mine from labelled group by chunk),
+  with per_chunk as (select chunk, count(*) as n, bool_or(contributor_id = $1) as mine from chunk_labels group by chunk),
   my_families as (select distinct g.family from group_answers a join chunk_groups g on g.id = a.group_id where a.contributor_id = $1),
   my_recent as (                           -- what this person's last 8 groups said: not again right away
     select g.proposed_text from group_answers a join chunk_groups g on g.id = a.group_id
@@ -32,7 +28,7 @@ const CANDIDATES = `
     group by g.id)`;
 
 /** Next group for this person (see above), or the one they had open (wantId). */
-export async function nextGroup(cid: string, exclude: string[] = [], wantId?: string | null) {
+export async function nextGroup(cid: string, exclude: string[] = [], wantId?: string | null, withCount = true) {
   const pick = (extra: string, params: unknown[]) => q<any>(
     `${CANDIDATES}
      select id, members, proposed_text, jsonb_array_length(members) as size from open o
@@ -42,7 +38,8 @@ export async function nextGroup(cid: string, exclude: string[] = [], wantId?: st
     [cid, exclude, ...params]);
   const [want] = wantId ? await pick("and id = $3", [wantId]) : [];
   const [g] = want ? [want] : await pick("", []);
-  const [{ left }] = await q<{ left: number }>(`${CANDIDATES} select count(*)::int as left from open`, [cid]);
+  // the count is only for the "left" figure: worked out on the first load, not after every answer
+  const left = withCount ? (await q<{ left: number }>(`${CANDIDATES} select count(*)::int as left from open`, [cid]))[0].left : null;
   return { group: g ?? null, left };
 }
 
@@ -67,5 +64,13 @@ export async function saveGroupAnswer(cid: string, a: GroupAnswerIn): Promise<{ 
      on conflict (group_id, contributor_id) do update set odd = excluded.odd, shown = excluded.shown, verdict = excluded.verdict,
        correction = excluded.correction, updated_at = now()`,
     [a.groupId, cid, JSON.stringify(odd), shown && shown.length ? JSON.stringify(shown) : null, a.verdict, correction, Math.min(Number(a.ms) || 0, 3_600_000)]);
+  // keep the who-labelled-which-chunk index in step with this answer
+  await q("delete from chunk_labels where group_id = $1 and contributor_id = $2", [a.groupId, cid]);
+  if (a.verdict !== "skip") {
+    const labelled = [...ids].filter((c) => !odd.includes(c) && (!shown || !shown.length || shown.includes(c)));
+    if (labelled.length) await q(
+      `insert into chunk_labels (chunk, contributor_id, group_id) select c, $2, $3 from jsonb_array_elements_text(($1::text)::jsonb) c
+       on conflict (chunk, contributor_id) do update set group_id = excluded.group_id`, [JSON.stringify(labelled), cid, a.groupId]);
+  }
   return { ok: true };
 }

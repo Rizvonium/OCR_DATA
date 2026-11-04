@@ -110,6 +110,13 @@ python3 segmentation/make_boards.py data/match/manifest.jsonl data/pages/manifes
 
 ## Nothing is lost on a phone
 
+- **Answers are saved in the background**: in Label, Match and Segmentation the next item appears at
+  once (it is fetched while you look at the current one) and the answer goes into a save queue kept on
+  the phone, sent in order and retried until saved — also after a reload or when the phone comes back
+  online. The top bar shows "Saving…" or "⏳ N waiting for connection" while anything is unsent.
+- After each save the server returns only your own points (one cheap query); the rank is computed on the
+  profile and leaderboard. `chunk_labels` (who labelled which chunk) lets the next group be picked
+  without re-reading every answer.
 - Pull-to-refresh and double-tap zoom are off in the app; text boxes are 16 px so iPhones do not zoom in.
 - Every save is retried up to 3 times on a dropped connection or a passing server error (saves are
   upserts, so a retry never stores anything twice); if it still fails, the screen says so.

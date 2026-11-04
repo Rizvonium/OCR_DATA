@@ -1,7 +1,7 @@
 import { q } from "@/lib/db";
 import { body, fail, json } from "@/lib/http";
 import { currentContributor } from "@/lib/identity";
-import { myStats } from "@/lib/review";
+import { quickStats } from "@/lib/review";
 
 export const dynamic = "force-dynamic";
 
@@ -30,5 +30,5 @@ export async function POST(req: Request) {
      on conflict (board_id, contributor_id) do update set sets = excluded.sets, rest = excluded.rest, junk = excluded.junk,
        ms_spent = greatest(match_answers.ms_spent, excluded.ms_spent), done = excluded.done, updated_at = now()`,
     [b.boardId, me.id, JSON.stringify(sets), JSON.stringify(rest), JSON.stringify(junk), Math.min(Number(b.ms) || 0, 3_600_000), b.done !== false]);
-  return json({ ok: true, sets: sets.length, stats: await myStats(me.id) });
+  return json({ ok: true, sets: sets.length, stats: await quickStats(me.id) });
 }

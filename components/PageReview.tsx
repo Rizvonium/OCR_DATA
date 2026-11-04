@@ -4,7 +4,8 @@ import Link from "next/link";
 // with withText; normally text is labelled by look-alike groups in GroupReview).
 // Every decision is saved at once (POST /api/page/answer); Back goes to any earlier step to change it.
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { api, useApp, type Stats } from "./AppState";
+import { api, useApp } from "./AppState";
+import { enqueue, whenIdle } from "./saveQueue";
 import { Check, Cross, Leaf } from "./icons";
 import { Keyboard, applyKey, usePhoneKeyboard } from "./Keyboard";
 import { useLeaveWarning } from "./useLeaveWarning";
@@ -112,7 +113,7 @@ function ChunkView({ page, chunk }: { page: Page; chunk: Chunk }) {
 
 // ------------------------------------------------------------------ the flow
 export function PageReview({ withText = false }: { withText?: boolean }) {
-  const { stats, setStats } = useApp();
+  const { stats } = useApp();
   const [page, setPage] = useState<Page | null>(null);
   const [none, setNone] = useState(false);
   const [ans, setAns] = useState<Record<string, Ans>>({});
@@ -157,6 +158,8 @@ export function PageReview({ withText = false }: { withText?: boolean }) {
 
   const load = useCallback(async () => {
     setErr(""); setMode("ask");
+    // answers still in the save queue (e.g. from before a reload) go first, so the page resumes at the right step
+    await Promise.race([whenIdle(), new Promise((r) => setTimeout(r, 3000))]);
     // reopen the page that was on screen before a reload (unless it was just finished)
     let want = ""; try { want = localStorage.getItem("ks_page") || ""; } catch {}
     const r = await api<{ page: Page | null; answers?: Ans[] }>(`/api/page${want ? `?id=${encodeURIComponent(want)}` : ""}`);
@@ -203,12 +206,10 @@ export function PageReview({ withText = false }: { withText?: boolean }) {
 
   async function save(level: string, verdict: string, extra: { line?: number; chunk?: number; edit?: any; correction?: string } = {}) {
     if (!page) return;
-    setBusy(true); setErr("");
-    try {
-      const r = await api<{ stats: Stats }>("/api/page/answer", {
-        method: "POST", json: { pageId: page.id, level, verdict, ms: Date.now() - shownAt.current, ...extra },
-      });
-      setStats(r.stats);
+    setErr("");
+    // into the background save queue (in order, retried, kept across reloads); the screen moves on at once
+    enqueue("/api/page/answer", "POST", { pageId: page.id, level, verdict, ms: Date.now() - shownAt.current, ...extra });
+    {
       setAns((m) => {
         const n = { ...m };
         // the server drops answers that a changed line or chunk list makes stale; do the same here
@@ -220,7 +221,7 @@ export function PageReview({ withText = false }: { withText?: boolean }) {
       setMode("ask");
       if (step) dropDraft(page.id, step);
       if (level !== "page") setIdx((i) => i + 1);
-    } catch (e: any) { setErr(e.message); } finally { setBusy(false); }
+    }
   }
 
   // ---------------- fixing lines: tap inside a band to split it there, tap between two bands to join them
@@ -483,7 +484,12 @@ export function PageReview({ withText = false }: { withText?: boolean }) {
             <h2 style={{ marginTop: 10 }}>Page finished — thank you!</h2>
             <p className="muted">{nLines} lines, {lines.reduce((n, _, i) => n + chunksOf(i).length, 0)} chunks checked. You have <b>{stats?.points ?? 0}</b> points.</p>
             {stats?.badges?.length ? <p className="badges">{stats.badges.map((b) => <span key={b.id} className="badge" title={b.why}>{b.icon} {b.name}</span>)}</p> : null}
-            <button className="btn primary" disabled={busy} onClick={async () => { await save("page", "done"); try { localStorage.removeItem("ks_page"); } catch {} await load(); }}>Next page ›</button>
+            <button className="btn primary" disabled={busy} onClick={async () => {
+              setBusy(true);
+              await save("page", "done"); try { localStorage.removeItem("ks_page"); } catch {}
+              await whenIdle(); // the server must know this page is finished before it picks the next one
+              await load(); setBusy(false);
+            }}>{busy ? "Saving…" : "Next page ›"}</button>
           </div>
         )}
         {err && <p className="err" style={{ padding: "0 22px 16px" }}>{err}</p>}
