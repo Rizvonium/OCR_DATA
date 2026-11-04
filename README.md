@@ -117,6 +117,18 @@ images) upload them to Supabase Storage instead: also set `SUPABASE_URL` and `SU
 | Limits | 30 answers a minute; answer speed is measured by the server; 30 new names per network per day (raise `SIGNUPS_PER_NETWORK_PER_DAY` for a big workshop on one Wi-Fi). |
 | You decide | `/admin` lists everyone with their numbers; set a person to *blocked* and their answers are ignored everywhere. |
 
+### Looking at the data in Google Sheets
+
+The database keeps the answers safe; Sheets is a good place to *look* at them. On `/admin`:
+**Answers sheet (CSV)** downloads one row per answer (time, reviewer, code, email, picture, font, typed
+text, answer, fix, right or wrong, picture link) and **Pictures sheet (CSV)** one row per picture with
+everyone's answers. Open either in Google Sheets (File → Import). For a copy that updates by itself,
+put this in cell A1 of an empty, private sheet (it contains your admin key):
+
+```text
+=IMPORTDATA("https://kasdata.vercel.app/api/export?key=YOUR_ADMIN_KEY&format=csv&view=answers")
+```
+
 ### Seeing who answered what
 
 Every answer is saved with the person who gave it. **Admin → Who answered what** lists each picture

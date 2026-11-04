@@ -97,8 +97,13 @@ export default function Admin() {
           <a className="btn" href={ex("needs_text,disputed")}>Wrong / disputed</a>
           <a className="btn" href={ex("bad_crop")}>Bad boxes</a>
           <a className="btn" href={ex("all")}>Everything, with every answer</a>
+          <a className="btn" href={`/api/export?key=${encodeURIComponent(key)}&format=csv&view=answers`}>Answers sheet (CSV, one row per answer)</a>
+          <a className="btn" href={`/api/export?key=${encodeURIComponent(key)}&format=csv`}>Pictures sheet (CSV)</a>
           <button className="btn ghost" onClick={() => post({ action: "promote_gold", limit: 50 })}>Make 50 unanimous items into check items ({data.gold} now)</button>
         </div>
+        <p className="small muted" style={{ marginBottom: 0 }}>Live copy in Google Sheets: put this in cell A1 of an empty sheet —{" "}
+          <code style={{ userSelect: "all", wordBreak: "break-all" }}>{`=IMPORTDATA("${typeof window !== "undefined" ? location.origin : ""}/api/export?key=${encodeURIComponent(key)}&format=csv&view=answers")`}</code>
+          {" "}(it refreshes about every hour; keep that sheet private, it contains your admin key).</p>
         {msg && <p className="small muted">{msg}</p>}
       </div>
 
